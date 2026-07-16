@@ -6,7 +6,7 @@ Pod::Spec.new do |s|
   s.name         = 'crosspromo-react-native'
   s.version      = package['version']
   s.summary      = package['description']
-  s.homepage     = 'https://crosspromo.app'
+  s.homepage     = 'https://github.com/Amian/crosspromo-sdk'
   s.license      = package['license']
   s.author       = { 'CrossPromo' => 'sdk@crosspromo.app' }
   s.source       = { :path => '.' }

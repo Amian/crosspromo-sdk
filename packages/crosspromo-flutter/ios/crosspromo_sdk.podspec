@@ -3,7 +3,7 @@ Pod::Spec.new do |s|
   s.version          = '0.1.0'
   s.summary          = 'CrossPromo Flutter integrity bridge.'
   s.description      = 'Provides App Attest and AppTransaction evidence to CrossPromo.'
-  s.homepage         = 'https://crosspromo.app'
+  s.homepage         = 'https://github.com/Amian/crosspromo-sdk'
   s.license          = { :type => 'MIT' }
   s.author           = { 'CrossPromo' => 'sdk@crosspromo.app' }
   s.source           = { :path => '.' }
