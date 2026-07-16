@@ -15,8 +15,7 @@ CrossPromo supports:
 - Flutter apps running on iOS; and
 - React Native apps running on iOS.
 
-> **Version 1 is iOS-only.** Android and Google Play support is deferred to the
-> [version 2 roadmap](V2_GOOGLE_PLAY.md). The SDK and backend can be used for
+> **CrossPromo currently supports iOS only.** The SDK and backend can be used for
 > integration testing. Only verified activity from a public App Store release counts.
 
 ## Fastest option: ask your coding agent
@@ -194,9 +193,6 @@ CrossPromo stores events against participating apps, not people or devices. It d
 store an installation ID, App Transaction ID, IP address, user agent, or locale. The
 Apple-signed App Transaction is checked during verification and then discarded.
 
-For the complete server contract and fraud controls, see the
-[backend API plan](docs/backend-api-plan.md).
-
 ## Repository layout
 
 | Package | Location |
@@ -204,8 +200,6 @@ For the complete server contract and fraud controls, see the
 | Native iOS | [`packages/crosspromo-ios`](packages/crosspromo-ios) |
 | Flutter | [`packages/crosspromo-flutter`](packages/crosspromo-flutter) |
 | React Native | [`packages/crosspromo-react-native`](packages/crosspromo-react-native) |
-| Backend plan | [`docs/backend-api-plan.md`](docs/backend-api-plan.md) |
-| Version 2: Google Play | [`V2_GOOGLE_PLAY.md`](V2_GOOGLE_PLAY.md) |
 
 ## Development checks
 

@@ -1,7 +1,6 @@
 # CrossPromo for Flutter
 
-CrossPromo version 1 supports Flutter apps on iOS only. Android support is deferred to
-the [version 2 roadmap](../../V2_GOOGLE_PLAY.md).
+CrossPromo currently supports Flutter apps on iOS only.
 
 ## Install
 
