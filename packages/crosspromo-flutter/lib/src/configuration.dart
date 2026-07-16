@@ -30,7 +30,8 @@ class CrossPromoConfiguration {
 
   static Uri _uriFor(CrossPromoEnvironment environment) =>
       switch (environment) {
-        CrossPromoEnvironment.production || CrossPromoEnvironment.sandbox =>
+        CrossPromoEnvironment.production ||
+        CrossPromoEnvironment.sandbox =>
           Uri.parse('https://backend-j5mh.onrender.com'),
       };
 }

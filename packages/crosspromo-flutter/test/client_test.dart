@@ -49,8 +49,8 @@ void main() {
         transport.requests.first.body['integrity']! as Map<String, Object?>;
     expect(integrity['provider'], 'app_transaction');
     expect(integrity['app_transaction_jws'], 'apple.signed.jws');
-    final evidence = transport.requests[1].body['evidence']!
-        as Map<String, Object?>;
+    final evidence =
+        transport.requests[1].body['evidence']! as Map<String, Object?>;
     expect(evidence['provider'], 'app_transaction');
     expect(evidence['app_transaction_jws'], 'apple.signed.jws');
     expect(transport.requests[2].body['placement'], 'post_scan');
