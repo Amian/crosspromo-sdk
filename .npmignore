@@ -1,0 +1,8 @@
+**/.build/
+**/.dart_tool/
+**/.gradle/
+**/.swiftpm/
+**/build/
+**/node_modules/
+**/test/
+**/Tests/

@@ -1,0 +1,38 @@
+{
+  "name": "@crosspromo/react-native",
+  "version": "0.1.0",
+  "description": "Privacy-first CrossPromo recommendation cards for React Native",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "react-native": "src/index.ts",
+  "files": [
+    "android",
+    "ios",
+    "lib",
+    "src",
+    "crosspromo-react-native.podspec",
+    "react-native.config.js",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "tsx --test test/*.test.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "peerDependencies": {
+    "react": ">=18.0.0",
+    "react-native": ">=0.72.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/react": "^18.3.0",
+    "react": "18.3.1",
+    "react-native": "0.76.9",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  },
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  }
+}

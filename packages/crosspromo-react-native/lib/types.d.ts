@@ -1,0 +1,54 @@
+export type CrossPromoEnvironment = 'production' | 'sandbox';
+export interface CrossPromoConfiguration {
+    appKey: string;
+    environment?: CrossPromoEnvironment;
+    /** Intended for local contract tests only. */
+    baseUrl?: string;
+    requestTimeoutMs?: number;
+}
+export interface PromoCardData {
+    cardId: string;
+    appName: string;
+    iconUrl: string;
+    tagline: string;
+    cta: string;
+    clickUrl: string;
+    impressionToken: string;
+    expiresAt: Date;
+}
+export interface CrossPromoSessionStatus {
+    publisherAppId: string;
+    countsEnabled: boolean;
+    reason: string | null;
+    expiresAt: Date;
+}
+export interface AppContext {
+    installation_id: string;
+    platform: 'ios' | 'android';
+    bundle_id: string;
+    version: string;
+    build_number: string;
+}
+export interface IntegrityPreparation {
+    provider: 'app_attest' | 'play_integrity' | 'none';
+    key_id: string | null;
+    app_transaction_jws: string | null;
+    device_verification_id: string | null;
+}
+export interface IntegrityEvidence {
+    provider: 'app_attest' | 'play_integrity' | 'none';
+    key_id: string | null;
+    payload_base64: string;
+}
+export interface CrossPromoPlatform {
+    getAppContext(): Promise<AppContext>;
+    prepareIntegrity(): Promise<IntegrityPreparation>;
+    generateEvidence(input: {
+        challenge_base64: string;
+        mode: string;
+        cloud_project_number?: number;
+    }): Promise<IntegrityEvidence>;
+    openUrl(url: string): Promise<void>;
+    resetInstallationId(): Promise<void>;
+}
+export type Fetch = (input: string, init?: RequestInit) => Promise<Pick<Response, 'ok' | 'status' | 'text'>>;

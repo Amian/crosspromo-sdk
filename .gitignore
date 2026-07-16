@@ -1,0 +1,8 @@
+.DS_Store
+**/.build/
+**/.dart_tool/
+**/.swiftpm/
+**/node_modules/
+**/build/
+**/coverage/
+*.xcuserstate
