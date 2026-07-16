@@ -87,6 +87,7 @@ public actor CrossPromoClient {
         let snapshot = try await deviceContext.snapshot()
         let challengeRequest = SessionChallengeRequest(
             appKey: configuration.appKey,
+            environment: configuration.environment.requestValue,
             installationID: snapshot.installationID,
             app: snapshot.app,
             sdk: SDKDescriptor(name: "crosspromo-ios", version: CrossPromo.sdkVersion),

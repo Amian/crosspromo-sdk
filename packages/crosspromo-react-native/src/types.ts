@@ -42,16 +42,13 @@ export interface AppContext {
 }
 
 export interface IntegrityPreparation {
-  provider: 'app_attest' | 'play_integrity' | 'none';
-  key_id: string | null;
+  provider: 'app_transaction' | 'play_integrity' | 'none';
   app_transaction_jws: string | null;
-  device_verification_id: string | null;
 }
 
 export interface IntegrityEvidence {
-  provider: 'app_attest' | 'play_integrity' | 'none';
-  key_id: string | null;
-  payload_base64: string;
+  provider: 'app_transaction' | 'play_integrity' | 'none';
+  app_transaction_jws: string | null;
 }
 
 export interface CrossPromoPlatform {

@@ -1,5 +1,3 @@
-import CryptoKit
-import DeviceCheck
 import Foundation
 import React
 import StoreKit
@@ -9,7 +7,6 @@ import UIKit
 final class CrossPromoNative: NSObject {
     private enum Keys {
         static let installationID = "app.crosspromo.sdk.installation-id"
-        static let appAttestKeyID = "app.crosspromo.sdk.app-attest-key-id"
     }
 
     @objc static func requiresMainQueueSetup() -> Bool { false }
@@ -35,36 +32,11 @@ final class CrossPromoNative: NSObject {
         reject: @escaping RCTPromiseRejectBlock
     ) {
         Task {
-            let appAttest = DCAppAttestService.shared
             let transactionJWS = try? await AppTransaction.shared.jwsRepresentation
-            guard appAttest.isSupported else {
-                let response: [String: Any] = [
-                    "provider": "none",
-                    "key_id": NSNull(),
-                    "app_transaction_jws": (transactionJWS as Any?) ?? NSNull(),
-                    "device_verification_id": (AppStore.deviceVerificationID?.uuidString.lowercased() as Any?) ?? NSNull(),
-                ]
-                resolve(response)
-                return
-            }
-            do {
-                let keyID: String
-                if let stored = UserDefaults.standard.string(forKey: Keys.appAttestKeyID) {
-                    keyID = stored
-                } else {
-                    keyID = try await appAttest.generateKey()
-                    UserDefaults.standard.set(keyID, forKey: Keys.appAttestKeyID)
-                }
-                let response: [String: Any] = [
-                    "provider": "app_attest",
-                    "key_id": keyID,
-                    "app_transaction_jws": (transactionJWS as Any?) ?? NSNull(),
-                    "device_verification_id": (AppStore.deviceVerificationID?.uuidString.lowercased() as Any?) ?? NSNull(),
-                ]
-                resolve(response)
-            } catch {
-                reject("integrity_prepare_failed", error.localizedDescription, error)
-            }
+            resolve([
+                "provider": "app_transaction",
+                "app_transaction_jws": (transactionJWS as Any?) ?? NSNull(),
+            ])
         }
     }
 
@@ -74,45 +46,27 @@ final class CrossPromoNative: NSObject {
         resolve: @escaping RCTPromiseResolveBlock,
         reject: @escaping RCTPromiseRejectBlock
     ) {
-        guard let mode = input["mode"] as? String,
-              let challengeBase64 = input["challenge_base64"] as? String else {
-            reject("invalid_arguments", "Challenge and mode are required", nil)
+        guard let mode = input["mode"] as? String else {
+            reject("invalid_arguments", "Verification mode is required", nil)
             return
         }
         if mode == "none" {
-            let response: [String: Any] = [
+            resolve([
                 "provider": "none",
-                "key_id": NSNull(),
-                "payload_base64": "",
-            ]
-            resolve(response)
+                "app_transaction_jws": NSNull(),
+            ])
             return
         }
-        guard let challenge = Data(base64Encoded: challengeBase64),
-              let keyID = UserDefaults.standard.string(forKey: Keys.appAttestKeyID) else {
-            reject("integrity_unavailable", "App Attest key or challenge is unavailable", nil)
+        guard mode == "app_transaction" else {
+            reject("invalid_mode", "Unsupported verification mode", nil)
             return
         }
-        let hash = Data(SHA256.hash(data: challenge))
         Task {
-            do {
-                let payload: Data
-                switch mode {
-                case "attestation":
-                    payload = try await DCAppAttestService.shared.attestKey(keyID, clientDataHash: hash)
-                case "assertion":
-                    payload = try await DCAppAttestService.shared.generateAssertion(keyID, clientDataHash: hash)
-                default:
-                    throw IntegrityError.invalidMode
-                }
-                resolve([
-                    "provider": "app_attest",
-                    "key_id": keyID,
-                    "payload_base64": payload.base64EncodedString(),
-                ])
-            } catch {
-                reject("integrity_evidence_failed", error.localizedDescription, error)
-            }
+            let transactionJWS = try? await AppTransaction.shared.jwsRepresentation
+            resolve([
+                "provider": "app_transaction",
+                "app_transaction_jws": (transactionJWS as Any?) ?? NSNull(),
+            ])
         }
     }
 
@@ -154,8 +108,4 @@ final class CrossPromoNative: NSObject {
         UserDefaults.standard.set(value, forKey: Keys.installationID)
         return value
     }
-}
-
-private enum IntegrityError: Error {
-    case invalidMode
 }

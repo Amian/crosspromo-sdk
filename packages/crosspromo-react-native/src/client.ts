@@ -46,16 +46,16 @@ export class CrossPromoClient {
   ) {
     if (
       !configuration.appKey.startsWith('cp_live_') &&
-      !configuration.appKey.startsWith('cp_test_')
+      !configuration.appKey.startsWith('cpn_live_')
     ) {
-      throw new CrossPromoError('appKey must start with cp_live_ or cp_test_');
+      throw new CrossPromoError(
+        'appKey must be the key shown in your CrossPromo dashboard',
+      );
     }
     this.configuration = configuration;
     this.baseUrl = (
       configuration.baseUrl ??
-      (configuration.environment === 'sandbox'
-        ? 'https://sandbox-api.crosspromo.app'
-        : 'https://backend-j5mh.onrender.com')
+      'https://backend-j5mh.onrender.com'
     ).replace(/\/$/, '');
     this.timeoutMs = configuration.requestTimeoutMs ?? 10_000;
     if (this.timeoutMs <= 0) {
@@ -145,6 +145,8 @@ export class CrossPromoClient {
       cloud_project_number?: number;
     }>('/v1/sdk/sessions/challenge', {
       app_key: this.configuration.appKey,
+      environment:
+        this.configuration.environment === 'sandbox' ? 'sandbox' : 'production',
       installation_id: app.installation_id,
       app: {
         platform: app.platform,

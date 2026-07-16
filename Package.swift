@@ -14,7 +14,8 @@ let package = Package(
     targets: [
         .target(
             name: "CrossPromo",
-            path: "packages/crosspromo-ios/Sources/CrossPromo"
+            path: "packages/crosspromo-ios/Sources/CrossPromo",
+            resources: [.copy("PrivacyInfo.xcprivacy")]
         ),
         .testTarget(
             name: "CrossPromoTests",

@@ -2,15 +2,22 @@
 
 Add a small “you might also like” app recommendation card to your mobile app.
 
+## The whole setup
+
+1. [Add your App Store app to the CrossPromo dashboard](https://crosspromo-developer-dashboard.pages.dev/auth).
+2. Copy the ready-made prompt from your dashboard into your coding agent.
+3. Submit the updated app to Apple. CrossPromo automatically recognizes verified
+   activity after that version is public.
+
 CrossPromo supports:
 
 - native iPhone/iPad apps using Swift or SwiftUI;
-- Flutter apps on iOS and Android; and
-- React Native apps on iOS and Android.
+- Flutter apps running on iOS; and
+- React Native apps running on iOS.
 
-> **Current status:** The SDK is ready to integrate and test-build. The production
-> CrossPromo service and app keys are not live yet because the backend is the next
-> project phase. No backend is included in this repository.
+> **Version 1 is iOS-only.** Android and Google Play support is deferred to the
+> [version 2 roadmap](V2_GOOGLE_PLAY.md). The SDK and backend can be used for
+> integration testing. Only verified activity from a public App Store release counts.
 
 ## Fastest option: ask your coding agent
 
@@ -24,24 +31,24 @@ SDK repository: https://github.com/Amian/crosspromo-sdk
 
 Please work autonomously and make the integration changes for me:
 
-1. Detect whether this is native iOS, Flutter, or React Native.
+1. Confirm this is a native iOS, Flutter iOS, or React Native iOS app. CrossPromo v1
+   does not support Android.
 2. Read the CrossPromo root README and the README for the matching package.
 3. Install the SDK directly from the GitHub repository using the documented method.
-4. Configure CrossPromo once at app startup. If I have not provided a real app key,
-   use `cp_test_REPLACE_ME` as an obvious placeholder and tell me exactly where to
-   replace it later. Do not invent a production key.
+4. Configure CrossPromo once at app startup. Ask me to copy my app key from the
+   CrossPromo dashboard if it is not already present. Use that same key with the
+   sandbox environment while developing.
 5. Add one PromoCard to an existing, sensible screen—prefer a success/result screen,
    then settings or an empty state. Do not redesign the rest of the screen.
 6. Use the SDK's typed placement option that best fits the screen: post-scan, result,
    settings, or empty state. Do not pass a raw string.
-7. Apply the required native setup: iOS 16+ and App Attest on iOS; Android 23+ and
-   Play Integrity on Android.
-8. Run the relevant formatter, tests, and a platform build. Fix integration errors.
+7. Confirm the iOS deployment target is iOS 16 or later. CrossPromo does not require
+   an App Attest capability or an in-app purchase product.
+8. Run the relevant formatter, tests, and an iOS build. Fix integration errors.
 9. Finish by listing the files you changed and the one remaining action I need to take.
 ```
 
-That should leave only one manual step later: replacing the test placeholder with the
-app key issued by the CrossPromo dashboard.
+The developer only needs to provide the app key shown in the CrossPromo dashboard.
 
 ## Manual integration
 
@@ -58,7 +65,10 @@ Configure once when the app starts:
 ```swift
 import CrossPromo
 
-try CrossPromo.configure(appKey: "cp_test_REPLACE_ME", environment: .sandbox)
+try CrossPromo.configure(
+    appKey: "cp_live_YOUR_KEY_FROM_DASHBOARD",
+    environment: .sandbox
+)
 ```
 
 Add the card to a SwiftUI screen:
@@ -71,7 +81,7 @@ UIKit apps can use `CrossPromoCardUIView(placement: .postScan)`.
 
 [Detailed iOS instructions](packages/crosspromo-ios/README.md)
 
-### Flutter
+### Flutter on iOS
 
 Add this to `pubspec.yaml`:
 
@@ -87,7 +97,7 @@ Configure before `runApp`:
 
 ```dart
 CrossPromo.configure(
-  appKey: 'cp_test_REPLACE_ME',
+  appKey: 'cp_live_YOUR_KEY_FROM_DASHBOARD',
   environment: CrossPromoEnvironment.sandbox,
 );
 ```
@@ -100,7 +110,7 @@ const PromoCard(placement: CrossPromoPlacement.postScan)
 
 [Detailed Flutter instructions](packages/crosspromo-flutter/README.md)
 
-### React Native
+### React Native on iOS
 
 Install directly from GitHub:
 
@@ -119,7 +129,7 @@ import {
 } from '@crosspromo/react-native';
 
 CrossPromo.configure({
-  appKey: 'cp_test_REPLACE_ME',
+  appKey: 'cp_live_YOUR_KEY_FROM_DASHBOARD',
   environment: 'sandbox',
 });
 ```
@@ -136,26 +146,34 @@ Placements are typed options, so a misspelling is caught before the app runs.
 
 ## Release setup
 
-Before using a live key:
+Before changing the environment from sandbox to production:
 
-- iOS apps must target iOS 16 or later and enable the **App Attest** capability.
-- Android apps must target Android API 23 or later and enable **Play Integrity** in
-  Play Console.
+- the app must target iOS 16 or later;
+- the SDK must be included in a version released through the public App Store; and
+- the dashboard registration must match the app's bundle ID and numeric Apple app ID.
 
-The SDK automatically reads the app identifier, version, and build number. It does not
-use IDFA, GAID, fingerprinting, or install attribution.
+For the App Store build, use `environment: .production` / the equivalent production
+option, or simply omit `environment` because production is the default.
+
+CrossPromo does not require an App Attest capability or an in-app purchase product.
+The SDK reads the app identifier, version, build number, and Apple-signed App
+Transaction automatically.
 
 ## How counting is protected
 
 The app cannot decide whether an impression or click counts.
 
-- iOS sessions use App Attest and an Apple-signed AppTransaction tied to the device.
-- Android sessions use Play Integrity and require a Play-recognized, licensed app.
-- The future backend must independently confirm the app is currently public in the App
-  Store or Google Play.
+- iOS sessions provide an Apple-signed App Transaction.
+- The backend verifies its signature, production environment, bundle ID, Apple app ID,
+  and released version.
+- The backend also confirms that the app is currently public in the App Store.
 - Impressions use single-use server tokens and require 50% visibility for one second.
 - Clicks count only through a signed server redirect. There is no client-side
   `recordClick()` function.
+
+Debug builds, StoreKit testing, simulators, TestFlight, and sandbox activity never earn
+eligibility or counted activity. Google Play support is deliberately outside the v1
+production scope.
 
 For the complete server contract and fraud controls, see the
 [backend API plan](docs/backend-api-plan.md).
@@ -168,6 +186,7 @@ For the complete server contract and fraud controls, see the
 | Flutter | [`packages/crosspromo-flutter`](packages/crosspromo-flutter) |
 | React Native | [`packages/crosspromo-react-native`](packages/crosspromo-react-native) |
 | Backend plan | [`docs/backend-api-plan.md`](docs/backend-api-plan.md) |
+| Version 2: Google Play | [`V2_GOOGLE_PLAY.md`](V2_GOOGLE_PLAY.md) |
 
 ## Development checks
 

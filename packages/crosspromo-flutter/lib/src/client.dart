@@ -107,6 +107,7 @@ class CrossPromoClient {
     final integrity = await _platform.prepareIntegrity();
     final challenge = await _post('/v1/sdk/sessions/challenge', {
       'app_key': configuration.appKey,
+      'environment': configuration.environment.name,
       'installation_id': app.installationId,
       'app': app.toJson(),
       'sdk': {'name': 'crosspromo-flutter', 'version': '0.1.0'},
