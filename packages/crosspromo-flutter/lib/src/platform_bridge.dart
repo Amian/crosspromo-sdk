@@ -5,8 +5,6 @@ import 'models.dart';
 abstract interface class CrossPromoPlatform {
   Future<AppContext> getAppContext();
 
-  Future<IntegrityPreparation> prepareIntegrity();
-
   Future<IntegrityEvidence> generateEvidence({
     required String challengeBase64,
     required String mode,
@@ -14,8 +12,6 @@ abstract interface class CrossPromoPlatform {
   });
 
   Future<void> openUrl(Uri url);
-
-  Future<void> resetInstallationId();
 }
 
 class MethodChannelCrossPromoPlatform implements CrossPromoPlatform {
@@ -30,17 +26,6 @@ class MethodChannelCrossPromoPlatform implements CrossPromoPlatform {
       throw StateError('Native app context was unavailable');
     }
     return AppContext.fromJson(result);
-  }
-
-  @override
-  Future<IntegrityPreparation> prepareIntegrity() async {
-    final result = await _channel.invokeMapMethod<Object?, Object?>(
-      'prepareIntegrity',
-    );
-    if (result == null) {
-      throw StateError('Native integrity provider was unavailable');
-    }
-    return IntegrityPreparation.fromJson(result);
   }
 
   @override
@@ -66,8 +51,4 @@ class MethodChannelCrossPromoPlatform implements CrossPromoPlatform {
   @override
   Future<void> openUrl(Uri url) =>
       _channel.invokeMethod<void>('openUrl', {'url': url.toString()});
-
-  @override
-  Future<void> resetInstallationId() =>
-      _channel.invokeMethod<void>('resetInstallationId');
 }

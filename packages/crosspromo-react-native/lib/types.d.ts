@@ -29,15 +29,10 @@ export interface CrossPromoSessionStatus {
     expiresAt: Date;
 }
 export interface AppContext {
-    installation_id: string;
     platform: 'ios' | 'android';
     bundle_id: string;
     version: string;
     build_number: string;
-}
-export interface IntegrityPreparation {
-    provider: 'app_transaction' | 'play_integrity' | 'none';
-    app_transaction_jws: string | null;
 }
 export interface IntegrityEvidence {
     provider: 'app_transaction' | 'play_integrity' | 'none';
@@ -45,13 +40,11 @@ export interface IntegrityEvidence {
 }
 export interface CrossPromoPlatform {
     getAppContext(): Promise<AppContext>;
-    prepareIntegrity(): Promise<IntegrityPreparation>;
     generateEvidence(input: {
         challenge_base64: string;
         mode: string;
         cloud_project_number?: number;
     }): Promise<IntegrityEvidence>;
     openUrl(url: string): Promise<void>;
-    resetInstallationId(): Promise<void>;
 }
 export type Fetch = (input: string, init?: RequestInit) => Promise<Pick<Response, 'ok' | 'status' | 'text'>>;

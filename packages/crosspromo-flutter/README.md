@@ -34,8 +34,7 @@ const PromoCard(placement: CrossPromoPlacement.postScan)
 
 Other typed options are `.result`, `.settings`, and `.emptyState`.
 
-The SDK automatically supplies the iOS bundle ID, version, build number, locale, and an
-app-scoped random installation ID.
+The SDK automatically supplies the iOS bundle ID, version, and build number.
 
 ## App Store verification
 
@@ -58,5 +57,7 @@ click redirect.
 
 ## Privacy
 
-The signed App Transaction is used only to verify that SDK activity comes from the
-registered public App Store app.
+The SDK does not store an installation ID, device ID, IP address, user agent, or locale.
+The signed App Transaction is checked only to verify the registered public App Store app
+and is then discarded. Follow the repository's short
+[App Store Connect privacy guide](https://github.com/Amian/crosspromo-sdk/blob/main/APP_STORE_PRIVACY.md) before submitting.

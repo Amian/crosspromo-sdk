@@ -17,7 +17,6 @@ export declare class CrossPromoClient {
     fetchCard(placement: CrossPromoPlacement): Promise<PromoCardData | null>;
     recordImpression(card: PromoCardData, visibleFraction: number, durationMs: number): Promise<void>;
     open(card: PromoCardData): Promise<void>;
-    resetInstallationId(): Promise<void>;
     private validSession;
     private createSession;
     private post;

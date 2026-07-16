@@ -45,10 +45,10 @@ void main() {
     expect(transport.requests.first.body['environment'], 'production');
     expect(app['bundle_id'], 'app.example.publisher');
     expect(app['version'], '3.2.1');
-    final integrity =
-        transport.requests.first.body['integrity']! as Map<String, Object?>;
-    expect(integrity['provider'], 'app_transaction');
-    expect(integrity['app_transaction_jws'], 'apple.signed.jws');
+    expect(
+        transport.requests.first.body.containsKey('installation_id'), isFalse);
+    expect(transport.requests.first.body.containsKey('locale'), isFalse);
+    expect(transport.requests.first.body.containsKey('integrity'), isFalse);
     final evidence =
         transport.requests[1].body['evidence']! as Map<String, Object?>;
     expect(evidence['provider'], 'app_transaction');
@@ -115,18 +115,10 @@ class FakeTransport implements CrossPromoTransport {
 class FakePlatform implements CrossPromoPlatform {
   @override
   Future<AppContext> getAppContext() async => const AppContext(
-        installationId: 'install_1',
         platform: 'ios',
         bundleId: 'app.example.publisher',
         version: '3.2.1',
         buildNumber: '42',
-      );
-
-  @override
-  Future<IntegrityPreparation> prepareIntegrity() async =>
-      const IntegrityPreparation(
-        provider: 'app_transaction',
-        appTransactionJws: 'apple.signed.jws',
       );
 
   @override
@@ -142,7 +134,4 @@ class FakePlatform implements CrossPromoPlatform {
 
   @override
   Future<void> openUrl(Uri url) async {}
-
-  @override
-  Future<void> resetInstallationId() async {}
 }

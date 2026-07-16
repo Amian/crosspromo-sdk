@@ -69,11 +69,6 @@ public actor CrossPromoClient {
         )
     }
 
-    public func resetInstallationID() async {
-        session = nil
-        await deviceContext.resetInstallationID()
-    }
-
     private func validSession() async throws -> Session {
         if let session, session.status.expiresAt.timeIntervalSinceNow > 30 {
             return session
@@ -88,11 +83,8 @@ public actor CrossPromoClient {
         let challengeRequest = SessionChallengeRequest(
             appKey: configuration.appKey,
             environment: configuration.environment.requestValue,
-            installationID: snapshot.installationID,
             app: snapshot.app,
-            sdk: SDKDescriptor(name: "crosspromo-ios", version: CrossPromo.sdkVersion),
-            locale: Locale.current.identifier,
-            integrity: snapshot.integrity
+            sdk: SDKDescriptor(name: "crosspromo-ios", version: CrossPromo.sdkVersion)
         )
         let challenge: SessionChallengeResponse = try await request(
             path: "/v1/sdk/sessions/challenge",
@@ -131,7 +123,6 @@ public actor CrossPromoClient {
         request.httpMethod = method
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
-        request.setValue("crosspromo-ios/\(CrossPromo.sdkVersion)", forHTTPHeaderField: "User-Agent")
         if let bearerToken {
             request.setValue("Bearer \(bearerToken)", forHTTPHeaderField: "Authorization")
         }
@@ -162,7 +153,7 @@ public actor CrossPromoClient {
 
 @MainActor
 public enum CrossPromo {
-    public nonisolated static let sdkVersion = "0.2.0"
+    public nonisolated static let sdkVersion = "0.3.0"
     private static var configuredClient: CrossPromoClient?
 
     public static func configure(

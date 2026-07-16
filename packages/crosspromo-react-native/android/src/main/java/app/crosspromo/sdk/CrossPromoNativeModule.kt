@@ -14,7 +14,6 @@ import com.facebook.react.bridge.ReadableMap
 import com.google.android.play.core.integrity.IntegrityManagerFactory
 import com.google.android.play.core.integrity.StandardIntegrityManager
 import java.security.MessageDigest
-import java.util.UUID
 
 class CrossPromoNativeModule(
     private val reactContext: ReactApplicationContext,
@@ -34,7 +33,6 @@ class CrossPromoNativeModule(
             }
             promise.resolve(Arguments.makeNativeMap(
                 mapOf(
-                    "installation_id" to installationId(),
                     "platform" to "android",
                     "bundle_id" to reactContext.packageName,
                     "version" to (info.versionName ?: "0"),
@@ -44,18 +42,6 @@ class CrossPromoNativeModule(
         } catch (error: Exception) {
             promise.reject("app_context_failed", error)
         }
-    }
-
-    @ReactMethod
-    fun prepareIntegrity(promise: Promise) {
-        promise.resolve(Arguments.makeNativeMap(
-            mapOf(
-                "provider" to "play_integrity",
-                "key_id" to null,
-                "app_transaction_jws" to null,
-                "device_verification_id" to null,
-            )
-        ))
     }
 
     @ReactMethod
@@ -125,24 +111,4 @@ class CrossPromoNativeModule(
         }
     }
 
-    @ReactMethod
-    fun resetInstallationId(promise: Promise) {
-        preferences().edit().remove(INSTALLATION_ID).apply()
-        promise.resolve(null)
-    }
-
-    private fun installationId(): String {
-        val existing = preferences().getString(INSTALLATION_ID, null)
-        if (existing != null) return existing
-        val value = UUID.randomUUID().toString().lowercase()
-        preferences().edit().putString(INSTALLATION_ID, value).apply()
-        return value
-    }
-
-    private fun preferences() =
-        reactContext.getSharedPreferences("app.crosspromo.sdk", Context.MODE_PRIVATE)
-
-    private companion object {
-        const val INSTALLATION_ID = "installation-id"
-    }
 }

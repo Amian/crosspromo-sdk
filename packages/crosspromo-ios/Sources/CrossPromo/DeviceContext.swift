@@ -4,28 +4,16 @@ import StoreKit
 protocol CrossPromoDeviceContextProviding: Sendable {
     func snapshot() async throws -> DeviceSnapshot
     func generateEvidence(challengeBase64: String, mode: String) async throws -> IntegrityEvidence
-    func resetInstallationID() async
 }
 
 actor AppleDeviceContextProvider: CrossPromoDeviceContextProviding {
-    private enum Keys {
-        static let installationID = "app.crosspromo.sdk.installation-id"
-    }
-
-    private let defaults: UserDefaults
     private let bundle: Bundle
-    private var cachedAppTransactionJWS: String?
 
-    init(
-        defaults: UserDefaults = .standard,
-        bundle: Bundle = .main
-    ) {
-        self.defaults = defaults
+    init(bundle: Bundle = .main) {
         self.bundle = bundle
     }
 
     func snapshot() async throws -> DeviceSnapshot {
-        let installationID = currentInstallationID()
         let app = AppDescriptor(
             platform: "ios",
             bundleID: bundle.bundleIdentifier ?? "unknown",
@@ -33,14 +21,7 @@ actor AppleDeviceContextProvider: CrossPromoDeviceContextProviding {
             buildNumber: bundle.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "0"
         )
 
-        return DeviceSnapshot(
-            installationID: installationID,
-            app: app,
-            integrity: IntegrityPreparation(
-                provider: "app_transaction",
-                appTransactionJWS: await appTransactionJWS()
-            )
-        )
+        return DeviceSnapshot(app: app)
     }
 
     func generateEvidence(challengeBase64 _: String, mode: String) async throws -> IntegrityEvidence {
@@ -57,28 +38,10 @@ actor AppleDeviceContextProvider: CrossPromoDeviceContextProviding {
         }
     }
 
-    func resetInstallationID() {
-        defaults.removeObject(forKey: Keys.installationID)
-    }
-
-    private func currentInstallationID() -> String {
-        if let existing = defaults.string(forKey: Keys.installationID) {
-            return existing
-        }
-        let value = UUID().uuidString.lowercased()
-        defaults.set(value, forKey: Keys.installationID)
-        return value
-    }
-
     private func appTransactionJWS() async -> String? {
-        if let cachedAppTransactionJWS {
-            return cachedAppTransactionJWS
-        }
         guard #available(iOS 16.0, macOS 13.0, *) else { return nil }
         do {
-            let value = try await AppTransaction.shared.jwsRepresentation
-            cachedAppTransactionJWS = value
-            return value
+            return try await AppTransaction.shared.jwsRepresentation
         } catch {
             return nil
         }

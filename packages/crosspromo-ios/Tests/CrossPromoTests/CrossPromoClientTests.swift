@@ -39,9 +39,9 @@ struct CrossPromoClientTests {
         let app = try #require(challengeJSON["app"] as? [String: Any])
         #expect(app["bundle_id"] as? String == "app.example.publisher")
         #expect(app["version"] as? String == "3.2.1")
-        let integrity = try #require(challengeJSON["integrity"] as? [String: Any])
-        #expect(integrity["provider"] as? String == "app_transaction")
-        #expect(integrity["app_transaction_jws"] as? String == "apple.signed.jws")
+        #expect(challengeJSON["installation_id"] == nil)
+        #expect(challengeJSON["locale"] == nil)
+        #expect(challengeJSON["integrity"] == nil)
         let verifyBody = try #require(requests[1].httpBody)
         let verifyJSON = try #require(
             JSONSerialization.jsonObject(with: verifyBody) as? [String: Any]
@@ -107,16 +107,11 @@ private actor MockTransport: CrossPromoTransport {
 private actor MockDeviceContext: CrossPromoDeviceContextProviding {
     func snapshot() async throws -> DeviceSnapshot {
         DeviceSnapshot(
-            installationID: "install_1",
             app: AppDescriptor(
                 platform: "ios",
                 bundleID: "app.example.publisher",
                 version: "3.2.1",
                 buildNumber: "42"
-            ),
-            integrity: IntegrityPreparation(
-                provider: "app_transaction",
-                appTransactionJWS: "apple.signed.jws"
             )
         )
     }
@@ -124,6 +119,4 @@ private actor MockDeviceContext: CrossPromoDeviceContextProviding {
     func generateEvidence(challengeBase64: String, mode: String) async throws -> IntegrityEvidence {
         IntegrityEvidence(provider: "app_transaction", appTransactionJWS: "apple.signed.jws")
     }
-
-    func resetInstallationID() async {}
 }

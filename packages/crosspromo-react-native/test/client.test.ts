@@ -7,7 +7,6 @@ import type {
   CrossPromoPlatform,
   Fetch,
   IntegrityEvidence,
-  IntegrityPreparation,
 } from '../src/types';
 
 test('sends app identity and only reports qualified impressions', async () => {
@@ -87,10 +86,9 @@ test('sends app identity and only reports qualified impressions', async () => {
     version: '3.2.1',
     build_number: '42',
   });
-  assert.equal(
-    (challenge.integrity as Record<string, unknown>).app_transaction_jws,
-    'apple.signed.jws',
-  );
+  assert.equal(challenge.installation_id, undefined);
+  assert.equal(challenge.locale, undefined);
+  assert.equal(challenge.integrity, undefined);
   const verifyEvidence = requests[1]!.body.evidence as Record<string, unknown>;
   assert.equal(verifyEvidence.provider, 'app_transaction');
   assert.equal(verifyEvidence.app_transaction_jws, 'apple.signed.jws');
@@ -102,18 +100,10 @@ test('sends app identity and only reports qualified impressions', async () => {
 class FakePlatform implements CrossPromoPlatform {
   async getAppContext() {
     return {
-      installation_id: 'install_1',
       platform: 'ios' as const,
       bundle_id: 'app.example.publisher',
       version: '3.2.1',
       build_number: '42',
-    };
-  }
-
-  async prepareIntegrity(): Promise<IntegrityPreparation> {
-    return {
-      provider: 'app_transaction',
-      app_transaction_jws: 'apple.signed.jws',
     };
   }
 
@@ -125,5 +115,4 @@ class FakePlatform implements CrossPromoPlatform {
   }
 
   async openUrl(): Promise<void> {}
-  async resetInstallationId(): Promise<void> {}
 }

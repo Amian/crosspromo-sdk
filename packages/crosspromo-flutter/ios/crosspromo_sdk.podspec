@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name             = 'crosspromo_sdk'
-  s.version          = '0.2.0'
+  s.version          = '0.3.0'
   s.summary          = 'CrossPromo Flutter iOS bridge.'
   s.description      = 'Provides Apple App Transaction evidence to CrossPromo.'
   s.homepage         = 'https://github.com/Amian/crosspromo-sdk'

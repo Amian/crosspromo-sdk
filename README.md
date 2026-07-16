@@ -45,7 +45,8 @@ Please work autonomously and make the integration changes for me:
 7. Confirm the iOS deployment target is iOS 16 or later. CrossPromo does not require
    an App Attest capability or an in-app purchase product.
 8. Run the relevant formatter, tests, and an iOS build. Fix integration errors.
-9. Finish by listing the files you changed and the one remaining action I need to take.
+9. Finish by listing the files you changed and remind me to complete the CrossPromo
+   choices in APP_STORE_PRIVACY.md before submitting the app update.
 ```
 
 The developer only needs to provide the app key shown in the CrossPromo dashboard.
@@ -159,6 +160,20 @@ CrossPromo does not require an App Attest capability or an in-app purchase produ
 The SDK reads the app identifier, version, build number, and Apple-signed App
 Transaction automatically.
 
+## App Store privacy — five small choices
+
+Before submitting the version that contains CrossPromo, open **App Store Connect →
+your app → App Privacy**. Keep your app's existing answers, then add:
+
+- **Usage Data → Product Interaction**
+- **Usage Data → Advertising Data**
+
+For both, select **Third-Party Advertising** and **Analytics**, then answer **No** to
+**Linked to the user** and **No** to **Used for tracking**. CrossPromo does not require
+**Device ID** or an ATT prompt.
+
+[See the exact click-by-click privacy guide](APP_STORE_PRIVACY.md).
+
 ## How counting is protected
 
 The app cannot decide whether an impression or click counts.
@@ -174,6 +189,10 @@ The app cannot decide whether an impression or click counts.
 Debug builds, StoreKit testing, simulators, TestFlight, and sandbox activity never earn
 eligibility or counted activity. Google Play support is deliberately outside the v1
 production scope.
+
+CrossPromo stores events against participating apps, not people or devices. It does not
+store an installation ID, App Transaction ID, IP address, user agent, or locale. The
+Apple-signed App Transaction is checked during verification and then discarded.
 
 For the complete server contract and fraud controls, see the
 [backend API plan](docs/backend-api-plan.md).

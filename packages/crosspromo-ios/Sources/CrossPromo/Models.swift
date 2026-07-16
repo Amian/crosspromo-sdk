@@ -50,39 +50,21 @@ struct SDKDescriptor: Codable, Sendable {
     let version: String
 }
 
-struct IntegrityPreparation: Codable, Sendable {
-    let provider: String
-    let appTransactionJWS: String?
-
-    enum CodingKeys: String, CodingKey {
-        case provider
-        case appTransactionJWS = "app_transaction_jws"
-    }
-}
-
 struct DeviceSnapshot: Sendable {
-    let installationID: String
     let app: AppDescriptor
-    let integrity: IntegrityPreparation
 }
 
 struct SessionChallengeRequest: Codable, Sendable {
     let appKey: String
     let environment: String
-    let installationID: String
     let app: AppDescriptor
     let sdk: SDKDescriptor
-    let locale: String
-    let integrity: IntegrityPreparation
 
     enum CodingKeys: String, CodingKey {
         case appKey = "app_key"
         case environment
-        case installationID = "installation_id"
         case app
         case sdk
-        case locale
-        case integrity
     }
 }
 

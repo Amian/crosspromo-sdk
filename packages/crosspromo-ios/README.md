@@ -62,7 +62,7 @@ single-use impression token. Open `card.clickURL` when the card is tapped.
 
 ## Privacy
 
-The SDK creates a random, app-scoped installation ID. It does not access IDFA, track a
-person across apps, fingerprint devices, or perform install attribution. The signed App
-Transaction is used only to verify that SDK activity comes from the registered public
-App Store app.
+The SDK does not store an installation ID, device ID, IP address, user agent, or locale.
+The signed App Transaction is checked only to verify the registered public App Store app
+and is then discarded. Follow the repository's short
+[App Store Connect privacy guide](https://github.com/Amian/crosspromo-sdk/blob/main/APP_STORE_PRIVACY.md) before submitting.

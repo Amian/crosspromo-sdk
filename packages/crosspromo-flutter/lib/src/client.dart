@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:ui';
 
 import 'configuration.dart';
 import 'models.dart';
@@ -77,11 +76,6 @@ class CrossPromoClient {
 
   Future<void> open(PromoCardData card) => _platform.openUrl(card.clickUrl);
 
-  Future<void> resetInstallationId() async {
-    _session = null;
-    await _platform.resetInstallationId();
-  }
-
   Future<_Session> _validSession() async {
     final existing = _session;
     if (existing != null &&
@@ -104,15 +98,11 @@ class CrossPromoClient {
 
   Future<_Session> _createSession() async {
     final app = await _platform.getAppContext();
-    final integrity = await _platform.prepareIntegrity();
     final challenge = await _post('/v1/sdk/sessions/challenge', {
       'app_key': configuration.appKey,
       'environment': configuration.environment.name,
-      'installation_id': app.installationId,
       'app': app.toJson(),
-      'sdk': {'name': 'crosspromo-flutter', 'version': '0.2.0'},
-      'locale': PlatformDispatcher.instance.locale.toLanguageTag(),
-      'integrity': integrity.toJson(),
+      'sdk': {'name': 'crosspromo-flutter', 'version': '0.3.0'},
     });
     final evidence = await _platform.generateEvidence(
       challengeBase64: challenge['challenge_base64']! as String,

@@ -1,11 +1,12 @@
 {
   "name": "@crosspromo/react-native",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Privacy-first CrossPromo recommendation cards for React Native on iOS",
   "main": "packages/crosspromo-react-native/lib/index.js",
   "types": "packages/crosspromo-react-native/lib/index.d.ts",
   "react-native": "packages/crosspromo-react-native/src/index.ts",
   "files": [
+    "APP_STORE_PRIVACY.md",
     "packages/crosspromo-react-native/ios",
     "packages/crosspromo-react-native/lib",
     "packages/crosspromo-react-native/src",

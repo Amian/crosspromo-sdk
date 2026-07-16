@@ -53,10 +53,6 @@ class CrossPromoClient {
     async open(card) {
         await this.platform.openUrl(card.clickUrl);
     }
-    async resetInstallationId() {
-        this.session = undefined;
-        await this.platform.resetInstallationId();
-    }
     async validSession() {
         if (this.session &&
             this.session.status.expiresAt.getTime() - Date.now() > 30_000) {
@@ -75,20 +71,16 @@ class CrossPromoClient {
     }
     async createSession() {
         const app = await this.platform.getAppContext();
-        const integrity = await this.platform.prepareIntegrity();
         const challenge = await this.post('/v1/sdk/sessions/challenge', {
             app_key: this.configuration.appKey,
             environment: this.configuration.environment === 'sandbox' ? 'sandbox' : 'production',
-            installation_id: app.installation_id,
             app: {
                 platform: app.platform,
                 bundle_id: app.bundle_id,
                 version: app.version,
                 build_number: app.build_number,
             },
-            sdk: { name: 'crosspromo-react-native', version: '0.2.0' },
-            locale: resolvedLocale(),
-            integrity,
+            sdk: { name: 'crosspromo-react-native', version: '0.3.0' },
         });
         const evidence = await this.platform.generateEvidence({
             challenge_base64: challenge.challenge_base64,
@@ -118,7 +110,6 @@ class CrossPromoClient {
                 headers: {
                     Accept: 'application/json',
                     'Content-Type': 'application/json',
-                    'User-Agent': 'crosspromo-react-native/0.2.0',
                     ...(bearerToken
                         ? { Authorization: `Bearer ${bearerToken}` }
                         : undefined),
@@ -170,12 +161,4 @@ function cardFromWire(card) {
 }
 function randomId() {
     return `${Date.now().toString(16)}-${Math.random().toString(16).slice(2)}`;
-}
-function resolvedLocale() {
-    try {
-        return Intl.DateTimeFormat().resolvedOptions().locale;
-    }
-    catch {
-        return 'und';
-    }
 }

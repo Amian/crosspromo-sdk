@@ -58,7 +58,6 @@ class CrossPromoSessionStatus {
 
 class AppContext {
   const AppContext({
-    required this.installationId,
     required this.platform,
     required this.bundleId,
     required this.version,
@@ -66,14 +65,12 @@ class AppContext {
   });
 
   factory AppContext.fromJson(Map<Object?, Object?> json) => AppContext(
-        installationId: json['installation_id']! as String,
         platform: json['platform']! as String,
         bundleId: json['bundle_id']! as String,
         version: json['version']! as String,
         buildNumber: json['build_number']! as String,
       );
 
-  final String installationId;
   final String platform;
   final String bundleId;
   final String version;
@@ -84,27 +81,6 @@ class AppContext {
         'bundle_id': bundleId,
         'version': version,
         'build_number': buildNumber,
-      };
-}
-
-class IntegrityPreparation {
-  const IntegrityPreparation({
-    required this.provider,
-    this.appTransactionJws,
-  });
-
-  factory IntegrityPreparation.fromJson(Map<Object?, Object?> json) =>
-      IntegrityPreparation(
-        provider: json['provider']! as String,
-        appTransactionJws: json['app_transaction_jws'] as String?,
-      );
-
-  final String provider;
-  final String? appTransactionJws;
-
-  Map<String, Object?> toJson() => {
-        'provider': provider,
-        'app_transaction_jws': appTransactionJws,
       };
 }
 

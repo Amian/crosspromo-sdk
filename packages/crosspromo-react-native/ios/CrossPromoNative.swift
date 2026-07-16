@@ -5,10 +5,6 @@ import UIKit
 
 @objc(CrossPromoNative)
 final class CrossPromoNative: NSObject {
-    private enum Keys {
-        static let installationID = "app.crosspromo.sdk.installation-id"
-    }
-
     @objc static func requiresMainQueueSetup() -> Bool { false }
 
     @objc(getAppContext:rejecter:)
@@ -18,26 +14,11 @@ final class CrossPromoNative: NSObject {
     ) {
         let bundle = Bundle.main
         resolve([
-            "installation_id": installationID(),
             "platform": "ios",
             "bundle_id": bundle.bundleIdentifier ?? "unknown",
             "version": bundle.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0",
             "build_number": bundle.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "0",
         ])
-    }
-
-    @objc(prepareIntegrity:rejecter:)
-    func prepareIntegrity(
-        resolve: @escaping RCTPromiseResolveBlock,
-        reject: @escaping RCTPromiseRejectBlock
-    ) {
-        Task {
-            let transactionJWS = try? await AppTransaction.shared.jwsRepresentation
-            resolve([
-                "provider": "app_transaction",
-                "app_transaction_jws": (transactionJWS as Any?) ?? NSNull(),
-            ])
-        }
     }
 
     @objc(generateEvidence:resolver:rejecter:)
@@ -91,21 +72,4 @@ final class CrossPromoNative: NSObject {
         }
     }
 
-    @objc(resetInstallationId:rejecter:)
-    func resetInstallationId(
-        resolve: RCTPromiseResolveBlock,
-        reject _: RCTPromiseRejectBlock
-    ) {
-        UserDefaults.standard.removeObject(forKey: Keys.installationID)
-        resolve(nil)
-    }
-
-    private func installationID() -> String {
-        if let stored = UserDefaults.standard.string(forKey: Keys.installationID) {
-            return stored
-        }
-        let value = UUID().uuidString.lowercased()
-        UserDefaults.standard.set(value, forKey: Keys.installationID)
-        return value
-    }
 }

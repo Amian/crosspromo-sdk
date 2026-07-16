@@ -3,10 +3,6 @@ import StoreKit
 import UIKit
 
 public final class CrossPromoFlutterPlugin: NSObject, FlutterPlugin {
-    private enum Keys {
-        static let installationID = "app.crosspromo.sdk.installation-id"
-    }
-
     public static func register(with registrar: FlutterPluginRegistrar) {
         let channel = FlutterMethodChannel(
             name: "app.crosspromo/sdk",
@@ -20,14 +16,11 @@ public final class CrossPromoFlutterPlugin: NSObject, FlutterPlugin {
         case "getAppContext":
             let bundle = Bundle.main
             result([
-                "installation_id": installationID(),
                 "platform": "ios",
                 "bundle_id": bundle.bundleIdentifier ?? "unknown",
                 "version": bundle.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0",
                 "build_number": bundle.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "0",
             ])
-        case "prepareIntegrity":
-            prepareIntegrity(result: result)
         case "generateEvidence":
             generateEvidence(call: call, result: result)
         case "openUrl":
@@ -40,21 +33,8 @@ public final class CrossPromoFlutterPlugin: NSObject, FlutterPlugin {
             DispatchQueue.main.async {
                 UIApplication.shared.open(url) { opened in result(opened) }
             }
-        case "resetInstallationId":
-            UserDefaults.standard.removeObject(forKey: Keys.installationID)
-            result(nil)
         default:
             result(FlutterMethodNotImplemented)
-        }
-    }
-
-    private func prepareIntegrity(result: @escaping FlutterResult) {
-        Task {
-            let transactionJWS = try? await AppTransaction.shared.jwsRepresentation
-            result([
-                "provider": "app_transaction",
-                "app_transaction_jws": (transactionJWS as Any?) ?? NSNull(),
-            ])
         }
     }
 
@@ -82,15 +62,6 @@ public final class CrossPromoFlutterPlugin: NSObject, FlutterPlugin {
                 "app_transaction_jws": (transactionJWS as Any?) ?? NSNull(),
             ])
         }
-    }
-
-    private func installationID() -> String {
-        if let stored = UserDefaults.standard.string(forKey: Keys.installationID) {
-            return stored
-        }
-        let value = UUID().uuidString.lowercased()
-        UserDefaults.standard.set(value, forKey: Keys.installationID)
-        return value
     }
 
 }

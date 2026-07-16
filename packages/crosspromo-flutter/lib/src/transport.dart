@@ -34,10 +34,6 @@ class IoCrossPromoTransport implements CrossPromoTransport {
       final request = await client.postUrl(uri).timeout(timeout);
       request.headers.contentType = ContentType.json;
       request.headers.set(HttpHeaders.acceptHeader, 'application/json');
-      request.headers.set(
-        HttpHeaders.userAgentHeader,
-        'crosspromo-flutter/0.2.0',
-      );
       if (bearerToken != null) {
         request.headers.set(
           HttpHeaders.authorizationHeader,

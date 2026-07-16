@@ -14,6 +14,7 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+      - run: plutil -lint packages/crosspromo-ios/Sources/CrossPromo/PrivacyInfo.xcprivacy packages/crosspromo-flutter/ios/PrivacyInfo.xcprivacy packages/crosspromo-react-native/ios/PrivacyInfo.xcprivacy
       - run: swift test
 
   flutter-ios:

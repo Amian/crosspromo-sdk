@@ -12,7 +12,6 @@ import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import java.security.MessageDigest
-import java.util.UUID
 
 class CrossPromoFlutterPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
     private lateinit var context: Context
@@ -31,20 +30,8 @@ class CrossPromoFlutterPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
         when (call.method) {
             "getAppContext" -> result.success(appContext())
-            "prepareIntegrity" -> result.success(
-                mapOf(
-                    "provider" to "play_integrity",
-                    "key_id" to null,
-                    "app_transaction_jws" to null,
-                    "device_verification_id" to null,
-                )
-            )
             "generateEvidence" -> generateEvidence(call, result)
             "openUrl" -> openUrl(call, result)
-            "resetInstallationId" -> {
-                preferences().edit().remove(INSTALLATION_ID).apply()
-                result.success(null)
-            }
             else -> result.notImplemented()
         }
     }
@@ -58,7 +45,6 @@ class CrossPromoFlutterPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
             info.versionCode.toString()
         }
         return mapOf(
-            "installation_id" to installationId(),
             "platform" to "android",
             "bundle_id" to context.packageName,
             "version" to (info.versionName ?: "0"),
@@ -134,18 +120,4 @@ class CrossPromoFlutterPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
         }
     }
 
-    private fun installationId(): String {
-        val existing = preferences().getString(INSTALLATION_ID, null)
-        if (existing != null) return existing
-        val value = UUID.randomUUID().toString().lowercase()
-        preferences().edit().putString(INSTALLATION_ID, value).apply()
-        return value
-    }
-
-    private fun preferences() =
-        context.getSharedPreferences("app.crosspromo.sdk", Context.MODE_PRIVATE)
-
-    private companion object {
-        const val INSTALLATION_ID = "installation-id"
-    }
 }

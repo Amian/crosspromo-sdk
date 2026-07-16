@@ -113,11 +113,6 @@ export class CrossPromoClient {
     await this.platform.openUrl(card.clickUrl);
   }
 
-  async resetInstallationId(): Promise<void> {
-    this.session = undefined;
-    await this.platform.resetInstallationId();
-  }
-
   private async validSession(): Promise<Session> {
     if (
       this.session &&
@@ -137,7 +132,6 @@ export class CrossPromoClient {
 
   private async createSession(): Promise<Session> {
     const app = await this.platform.getAppContext();
-    const integrity = await this.platform.prepareIntegrity();
     const challenge = await this.post<{
       session_id: string;
       challenge_base64: string;
@@ -147,16 +141,13 @@ export class CrossPromoClient {
       app_key: this.configuration.appKey,
       environment:
         this.configuration.environment === 'sandbox' ? 'sandbox' : 'production',
-      installation_id: app.installation_id,
       app: {
         platform: app.platform,
         bundle_id: app.bundle_id,
         version: app.version,
         build_number: app.build_number,
       },
-      sdk: { name: 'crosspromo-react-native', version: '0.2.0' },
-      locale: resolvedLocale(),
-      integrity,
+      sdk: { name: 'crosspromo-react-native', version: '0.3.0' },
     });
     const evidence = await this.platform.generateEvidence({
       challenge_base64: challenge.challenge_base64,
@@ -199,7 +190,6 @@ export class CrossPromoClient {
         headers: {
           Accept: 'application/json',
           'Content-Type': 'application/json',
-          'User-Agent': 'crosspromo-react-native/0.2.0',
           ...(bearerToken
             ? { Authorization: `Bearer ${bearerToken}` }
             : undefined),
@@ -250,12 +240,4 @@ function cardFromWire(card: CardWire): PromoCardData {
 
 function randomId(): string {
   return `${Date.now().toString(16)}-${Math.random().toString(16).slice(2)}`;
-}
-
-function resolvedLocale(): string {
-  try {
-    return Intl.DateTimeFormat().resolvedOptions().locale;
-  } catch {
-    return 'und';
-  }
 }
