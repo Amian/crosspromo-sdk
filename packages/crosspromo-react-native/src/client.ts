@@ -154,7 +154,7 @@ export class CrossPromoClient {
         version: app.version,
         build_number: app.build_number,
       },
-      sdk: { name: 'crosspromo-react-native', version: '0.1.0' },
+      sdk: { name: 'crosspromo-react-native', version: '0.2.0' },
       locale: resolvedLocale(),
       integrity,
     });
@@ -199,7 +199,7 @@ export class CrossPromoClient {
         headers: {
           Accept: 'application/json',
           'Content-Type': 'application/json',
-          'User-Agent': 'crosspromo-react-native/0.1.0',
+          'User-Agent': 'crosspromo-react-native/0.2.0',
           ...(bearerToken
             ? { Authorization: `Bearer ${bearerToken}` }
             : undefined),

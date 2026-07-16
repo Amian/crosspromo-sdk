@@ -110,7 +110,7 @@ class CrossPromoClient {
       'environment': configuration.environment.name,
       'installation_id': app.installationId,
       'app': app.toJson(),
-      'sdk': {'name': 'crosspromo-flutter', 'version': '0.1.0'},
+      'sdk': {'name': 'crosspromo-flutter', 'version': '0.2.0'},
       'locale': PlatformDispatcher.instance.locale.toLanguageTag(),
       'integrity': integrity.toJson(),
     });
