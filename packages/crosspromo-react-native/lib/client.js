@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CrossPromoClient = exports.CrossPromoError = void 0;
+const types_1 = require("./types");
 class CrossPromoError extends Error {
     constructor(message, statusCode) {
         super(message);
@@ -14,14 +15,12 @@ class CrossPromoClient {
         this.platform = platform;
         this.fetcher = fetcher;
         if (!configuration.appKey.startsWith('cp_live_') &&
-            !configuration.appKey.startsWith('cp_test_')) {
-            throw new CrossPromoError('appKey must start with cp_live_ or cp_test_');
+            !configuration.appKey.startsWith('cpn_live_')) {
+            throw new CrossPromoError('appKey must be the key shown in your CrossPromo dashboard');
         }
         this.configuration = configuration;
         this.baseUrl = (configuration.baseUrl ??
-            (configuration.environment === 'sandbox'
-                ? 'https://sandbox-api.crosspromo.app'
-                : 'https://api.crosspromo.app')).replace(/\/$/, '');
+            'https://backend-j5mh.onrender.com').replace(/\/$/, '');
         this.timeoutMs = configuration.requestTimeoutMs ?? 10_000;
         if (this.timeoutMs <= 0) {
             throw new CrossPromoError('requestTimeoutMs must be positive');
@@ -31,12 +30,11 @@ class CrossPromoClient {
         return (await this.validSession()).status;
     }
     async fetchCard(placement) {
-        const normalized = placement.trim();
-        if (normalized.length < 1 || normalized.length > 64) {
-            throw new CrossPromoError('placement must contain 1 to 64 non-whitespace characters');
+        if (!Object.values(types_1.CrossPromoPlacement).includes(placement)) {
+            throw new CrossPromoError('placement must be a CrossPromoPlacement option');
         }
         const session = await this.validSession();
-        const response = await this.post('/v1/cards', { placement: normalized }, session.accessToken);
+        const response = await this.post('/v1/cards', { placement }, session.accessToken);
         return response.card ? cardFromWire(response.card) : null;
     }
     async recordImpression(card, visibleFraction, durationMs) {
@@ -80,6 +78,7 @@ class CrossPromoClient {
         const integrity = await this.platform.prepareIntegrity();
         const challenge = await this.post('/v1/sdk/sessions/challenge', {
             app_key: this.configuration.appKey,
+            environment: this.configuration.environment === 'sandbox' ? 'sandbox' : 'production',
             installation_id: app.installation_id,
             app: {
                 platform: app.platform,

@@ -8,12 +8,19 @@ public struct CrossPromoConfiguration: Sendable {
 
         var baseURL: URL {
             switch self {
-            case .production:
-                URL(string: "https://api.crosspromo.app")!
-            case .sandbox:
-                URL(string: "https://sandbox-api.crosspromo.app")!
+            case .production, .sandbox:
+                URL(string: "https://backend-j5mh.onrender.com")!
             case let .custom(url):
                 url
+            }
+        }
+
+        var requestValue: String {
+            switch self {
+            case .sandbox:
+                "sandbox"
+            case .production, .custom:
+                "production"
             }
         }
     }
@@ -27,9 +34,9 @@ public struct CrossPromoConfiguration: Sendable {
         environment: Environment = .production,
         requestTimeout: TimeInterval = 10
     ) throws {
-        guard appKey.hasPrefix("cp_live_") || appKey.hasPrefix("cp_test_") else {
+        guard appKey.hasPrefix("cp_live_") || appKey.hasPrefix("cpn_live_") else {
             throw CrossPromoError.invalidConfiguration(
-                "appKey must start with cp_live_ or cp_test_"
+                "appKey must be the key shown in your CrossPromo dashboard"
             )
         }
         guard requestTimeout > 0 else {

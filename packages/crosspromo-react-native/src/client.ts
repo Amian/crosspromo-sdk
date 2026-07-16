@@ -1,3 +1,4 @@
+import { CrossPromoPlacement } from './types';
 import type {
   CrossPromoConfiguration,
   CrossPromoPlatform,
@@ -45,16 +46,16 @@ export class CrossPromoClient {
   ) {
     if (
       !configuration.appKey.startsWith('cp_live_') &&
-      !configuration.appKey.startsWith('cp_test_')
+      !configuration.appKey.startsWith('cpn_live_')
     ) {
-      throw new CrossPromoError('appKey must start with cp_live_ or cp_test_');
+      throw new CrossPromoError(
+        'appKey must be the key shown in your CrossPromo dashboard',
+      );
     }
     this.configuration = configuration;
     this.baseUrl = (
       configuration.baseUrl ??
-      (configuration.environment === 'sandbox'
-        ? 'https://sandbox-api.crosspromo.app'
-        : 'https://api.crosspromo.app')
+      'https://backend-j5mh.onrender.com'
     ).replace(/\/$/, '');
     this.timeoutMs = configuration.requestTimeoutMs ?? 10_000;
     if (this.timeoutMs <= 0) {
@@ -68,17 +69,18 @@ export class CrossPromoClient {
     return (await this.validSession()).status;
   }
 
-  async fetchCard(placement: string): Promise<PromoCardData | null> {
-    const normalized = placement.trim();
-    if (normalized.length < 1 || normalized.length > 64) {
+  async fetchCard(
+    placement: CrossPromoPlacement,
+  ): Promise<PromoCardData | null> {
+    if (!Object.values(CrossPromoPlacement).includes(placement)) {
       throw new CrossPromoError(
-        'placement must contain 1 to 64 non-whitespace characters',
+        'placement must be a CrossPromoPlacement option',
       );
     }
     const session = await this.validSession();
     const response = await this.post<{ card: CardWire | null }>(
       '/v1/cards',
-      { placement: normalized },
+      { placement },
       session.accessToken,
     );
     return response.card ? cardFromWire(response.card) : null;
@@ -143,6 +145,8 @@ export class CrossPromoClient {
       cloud_project_number?: number;
     }>('/v1/sdk/sessions/challenge', {
       app_key: this.configuration.appKey,
+      environment:
+        this.configuration.environment === 'sandbox' ? 'sandbox' : 'production',
       installation_id: app.installation_id,
       app: {
         platform: app.platform,

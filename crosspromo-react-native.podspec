@@ -13,6 +13,7 @@ Pod::Spec.new do |s|
   s.source_files  = 'packages/crosspromo-react-native/ios/**/*.{h,m,mm,swift}'
   s.platform      = :ios, '16.0'
   s.swift_version = '5.9'
-  s.frameworks    = 'DeviceCheck', 'StoreKit'
+  s.frameworks    = 'StoreKit'
+  s.resource_bundles = { 'CrossPromoPrivacy' => ['packages/crosspromo-react-native/ios/PrivacyInfo.xcprivacy'] }
   s.dependency 'React-Core'
 end

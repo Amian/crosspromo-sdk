@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { CrossPromoClient } from '../src/client';
+import { CrossPromoPlacement } from '../src/types';
 import type {
   CrossPromoPlatform,
   Fetch,
@@ -15,7 +16,7 @@ test('sends app identity and only reports qualified impressions', async () => {
     '/v1/sdk/sessions/challenge': {
       session_id: 's_1',
       challenge_base64: 'aGVsbG8=',
-      integrity_mode: 'attestation',
+      integrity_mode: 'app_transaction',
     },
     '/v1/sdk/sessions/verify': {
       access_token: 'token',
@@ -53,12 +54,17 @@ test('sends app identity and only reports qualified impressions', async () => {
     };
   };
   const client = new CrossPromoClient(
-    { appKey: 'cp_test_example', baseUrl: 'https://example.test' },
+    { appKey: 'cp_live_example', baseUrl: 'https://example.test' },
     new FakePlatform(),
     fetcher,
   );
 
-  const card = await client.fetchCard('post_scan');
+  await assert.rejects(
+    client.fetchCard('post scan' as CrossPromoPlacement),
+    /CrossPromoPlacement option/,
+  );
+  assert.equal(requests.length, 0);
+  const card = await client.fetchCard(CrossPromoPlacement.PostScan);
   assert.equal(card?.cardId, 'c_1');
   await client.recordImpression(card!, 0.49, 2_000);
   assert.equal(requests.length, 3);
@@ -74,6 +80,7 @@ test('sends app identity and only reports qualified impressions', async () => {
     ],
   );
   const challenge = requests[0]!.body;
+  assert.equal(challenge.environment, 'production');
   assert.deepEqual(challenge.app, {
     platform: 'ios',
     bundle_id: 'app.example.publisher',
@@ -81,9 +88,13 @@ test('sends app identity and only reports qualified impressions', async () => {
     build_number: '42',
   });
   assert.equal(
-    (challenge.integrity as Record<string, unknown>).device_verification_id,
-    'device-verification-id',
+    (challenge.integrity as Record<string, unknown>).app_transaction_jws,
+    'apple.signed.jws',
   );
+  const verifyEvidence = requests[1]!.body.evidence as Record<string, unknown>;
+  assert.equal(verifyEvidence.provider, 'app_transaction');
+  assert.equal(verifyEvidence.app_transaction_jws, 'apple.signed.jws');
+  assert.equal(requests[2]!.body.placement, 'post_scan');
   const headers = requests[3]!.headers as Record<string, string>;
   assert.ok(headers['Idempotency-Key']);
 });
@@ -101,18 +112,15 @@ class FakePlatform implements CrossPromoPlatform {
 
   async prepareIntegrity(): Promise<IntegrityPreparation> {
     return {
-      provider: 'app_attest',
-      key_id: 'key_1',
+      provider: 'app_transaction',
       app_transaction_jws: 'apple.signed.jws',
-      device_verification_id: 'device-verification-id',
     };
   }
 
   async generateEvidence(): Promise<IntegrityEvidence> {
     return {
-      provider: 'app_attest',
-      key_id: 'key_1',
-      payload_base64: 'evidence',
+      provider: 'app_transaction',
+      app_transaction_jws: 'apple.signed.jws',
     };
   }
 

@@ -1,5 +1,3 @@
-import CryptoKit
-import DeviceCheck
 import Flutter
 import StoreKit
 import UIKit
@@ -7,7 +5,6 @@ import UIKit
 public final class CrossPromoFlutterPlugin: NSObject, FlutterPlugin {
     private enum Keys {
         static let installationID = "app.crosspromo.sdk.installation-id"
-        static let appAttestKeyID = "app.crosspromo.sdk.app-attest-key-id"
     }
 
     public static func register(with registrar: FlutterPluginRegistrar) {
@@ -53,80 +50,37 @@ public final class CrossPromoFlutterPlugin: NSObject, FlutterPlugin {
 
     private func prepareIntegrity(result: @escaping FlutterResult) {
         Task {
-            let appAttest = DCAppAttestService.shared
             let transactionJWS = try? await AppTransaction.shared.jwsRepresentation
-            guard appAttest.isSupported else {
-                let response: [String: Any] = [
-                    "provider": "none",
-                    "key_id": NSNull(),
-                    "app_transaction_jws": (transactionJWS as Any?) ?? NSNull(),
-                    "device_verification_id": (AppStore.deviceVerificationID?.uuidString.lowercased() as Any?) ?? NSNull(),
-                ]
-                result(response)
-                return
-            }
-            do {
-                let keyID: String
-                if let stored = UserDefaults.standard.string(forKey: Keys.appAttestKeyID) {
-                    keyID = stored
-                } else {
-                    keyID = try await appAttest.generateKey()
-                    UserDefaults.standard.set(keyID, forKey: Keys.appAttestKeyID)
-                }
-                let response: [String: Any] = [
-                    "provider": "app_attest",
-                    "key_id": keyID,
-                    "app_transaction_jws": (transactionJWS as Any?) ?? NSNull(),
-                    "device_verification_id": (AppStore.deviceVerificationID?.uuidString.lowercased() as Any?) ?? NSNull(),
-                ]
-                result(response)
-            } catch {
-                result(flutterError(error, code: "integrity_prepare_failed"))
-            }
+            result([
+                "provider": "app_transaction",
+                "app_transaction_jws": (transactionJWS as Any?) ?? NSNull(),
+            ])
         }
     }
 
     private func generateEvidence(call: FlutterMethodCall, result: @escaping FlutterResult) {
         guard let arguments = call.arguments as? [String: Any],
-              let challengeBase64 = arguments["challenge_base64"] as? String,
               let mode = arguments["mode"] as? String else {
-            result(FlutterError(code: "invalid_arguments", message: "Challenge and mode are required", details: nil))
+            result(FlutterError(code: "invalid_arguments", message: "Verification mode is required", details: nil))
             return
         }
         if mode == "none" {
-            let response: [String: Any] = [
+            result([
                 "provider": "none",
-                "key_id": NSNull(),
-                "payload_base64": "",
-            ]
-            result(response)
+                "app_transaction_jws": NSNull(),
+            ])
             return
         }
-        guard let challenge = Data(base64Encoded: challengeBase64),
-              let keyID = UserDefaults.standard.string(forKey: Keys.appAttestKeyID) else {
-            result(FlutterError(code: "integrity_unavailable", message: "App Attest key or challenge is unavailable", details: nil))
+        guard mode == "app_transaction" else {
+            result(FlutterError(code: "invalid_mode", message: "Unsupported verification mode", details: nil))
             return
         }
-        let hash = Data(SHA256.hash(data: challenge))
         Task {
-            do {
-                let payload: Data
-                switch mode {
-                case "attestation":
-                    payload = try await DCAppAttestService.shared.attestKey(keyID, clientDataHash: hash)
-                case "assertion":
-                    payload = try await DCAppAttestService.shared.generateAssertion(keyID, clientDataHash: hash)
-                default:
-                    throw IntegrityError.invalidMode
-                }
-                result([
-                    "provider": "app_attest",
-                    "key_id": keyID,
-                    "payload_base64": payload.base64EncodedString(),
-                ])
-            } catch {
-                result(flutterError(error, code: "integrity_evidence_failed"))
-            }
+            let transactionJWS = try? await AppTransaction.shared.jwsRepresentation
+            result([
+                "provider": "app_transaction",
+                "app_transaction_jws": (transactionJWS as Any?) ?? NSNull(),
+            ])
         }
     }
 
@@ -139,11 +93,4 @@ public final class CrossPromoFlutterPlugin: NSObject, FlutterPlugin {
         return value
     }
 
-    private func flutterError(_ error: Error, code: String) -> FlutterError {
-        FlutterError(code: code, message: error.localizedDescription, details: nil)
-    }
-}
-
-private enum IntegrityError: Error {
-    case invalidMode
 }

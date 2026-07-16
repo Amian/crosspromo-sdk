@@ -36,20 +36,14 @@ class CrossPromoClient {
   Future<CrossPromoSessionStatus> sessionStatus() async =>
       (await _validSession()).status;
 
-  Future<PromoCardData?> fetchCard({required String placement}) async {
-    final normalized = placement.trim();
-    if (normalized.isEmpty || normalized.length > 64) {
-      throw ArgumentError.value(
-        placement,
-        'placement',
-        'must contain 1 to 64 non-whitespace characters',
-      );
-    }
+  Future<PromoCardData?> fetchCard({
+    required CrossPromoPlacement placement,
+  }) async {
     final session = await _validSession();
     final json = await _post(
         '/v1/cards',
         {
-          'placement': normalized,
+          'placement': placement.value,
         },
         bearerToken: session.accessToken);
     final card = json['card'];
@@ -113,6 +107,7 @@ class CrossPromoClient {
     final integrity = await _platform.prepareIntegrity();
     final challenge = await _post('/v1/sdk/sessions/challenge', {
       'app_key': configuration.appKey,
+      'environment': configuration.environment.name,
       'installation_id': app.installationId,
       'app': app.toJson(),
       'sdk': {'name': 'crosspromo-flutter', 'version': '0.1.0'},

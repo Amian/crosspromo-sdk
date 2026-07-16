@@ -7,11 +7,11 @@ class CrossPromoConfiguration {
     Uri? baseUri,
     this.requestTimeout = const Duration(seconds: 10),
   }) : baseUri = baseUri ?? _uriFor(environment) {
-    if (!appKey.startsWith('cp_live_') && !appKey.startsWith('cp_test_')) {
+    if (!appKey.startsWith('cp_live_') && !appKey.startsWith('cpn_live_')) {
       throw ArgumentError.value(
         appKey,
         'appKey',
-        'must start with cp_live_ or cp_test_',
+        'must be the key shown in your CrossPromo dashboard',
       );
     }
     if (requestTimeout <= Duration.zero) {
@@ -30,11 +30,7 @@ class CrossPromoConfiguration {
 
   static Uri _uriFor(CrossPromoEnvironment environment) =>
       switch (environment) {
-        CrossPromoEnvironment.production => Uri.parse(
-            'https://api.crosspromo.app',
-          ),
-        CrossPromoEnvironment.sandbox => Uri.parse(
-            'https://sandbox-api.crosspromo.app',
-          ),
+        CrossPromoEnvironment.production || CrossPromoEnvironment.sandbox =>
+          Uri.parse('https://backend-j5mh.onrender.com'),
       };
 }

@@ -12,7 +12,7 @@ struct CrossPromoClientTests {
         let transport = MockTransport()
         let context = MockDeviceContext()
         let configuration = try CrossPromoConfiguration(
-            appKey: "cp_test_example",
+            appKey: "cp_live_example",
             environment: .custom(URL(string: "https://example.test")!)
         )
         let client = CrossPromoClient(
@@ -21,7 +21,7 @@ struct CrossPromoClientTests {
             deviceContext: context
         )
 
-        let card = try #require(await client.fetchCard(placement: "post_scan"))
+        let card = try #require(await client.fetchCard(placement: .postScan))
         try await client.recordImpression(for: card, visibleFraction: 0.75, duration: 1.1)
 
         let requests = await transport.requests
@@ -35,11 +35,25 @@ struct CrossPromoClientTests {
         let challengeJSON = try #require(
             JSONSerialization.jsonObject(with: challengeBody) as? [String: Any]
         )
+        #expect(challengeJSON["environment"] as? String == "production")
         let app = try #require(challengeJSON["app"] as? [String: Any])
         #expect(app["bundle_id"] as? String == "app.example.publisher")
         #expect(app["version"] as? String == "3.2.1")
         let integrity = try #require(challengeJSON["integrity"] as? [String: Any])
-        #expect(integrity["device_verification_id"] as? String == "device-verification-id")
+        #expect(integrity["provider"] as? String == "app_transaction")
+        #expect(integrity["app_transaction_jws"] as? String == "apple.signed.jws")
+        let verifyBody = try #require(requests[1].httpBody)
+        let verifyJSON = try #require(
+            JSONSerialization.jsonObject(with: verifyBody) as? [String: Any]
+        )
+        let evidence = try #require(verifyJSON["evidence"] as? [String: Any])
+        #expect(evidence["provider"] as? String == "app_transaction")
+        #expect(evidence["app_transaction_jws"] as? String == "apple.signed.jws")
+        let cardBody = try #require(requests[2].httpBody)
+        let cardJSON = try #require(
+            JSONSerialization.jsonObject(with: cardBody) as? [String: Any]
+        )
+        #expect(cardJSON["placement"] as? String == "post_scan")
         #expect(requests[3].value(forHTTPHeaderField: "Idempotency-Key") != nil)
     }
 
@@ -48,13 +62,13 @@ struct CrossPromoClientTests {
         let transport = MockTransport()
         let client = CrossPromoClient(
             configuration: try CrossPromoConfiguration(
-                appKey: "cp_test_example",
+                appKey: "cp_live_example",
                 environment: .custom(URL(string: "https://example.test")!)
             ),
             transport: transport,
             deviceContext: MockDeviceContext()
         )
-        let card = try #require(await client.fetchCard(placement: "settings"))
+        let card = try #require(await client.fetchCard(placement: .settings))
         try await client.recordImpression(for: card, visibleFraction: 0.49, duration: 4)
         #expect(await transport.requests.count == 3)
     }
@@ -69,7 +83,7 @@ private actor MockTransport: CrossPromoTransport {
         let json: String
         switch path {
         case "/v1/sdk/sessions/challenge":
-            json = #"{"session_id":"s_1","challenge_base64":"aGVsbG8=","integrity_mode":"attestation"}"#
+            json = #"{"session_id":"s_1","challenge_base64":"aGVsbG8=","integrity_mode":"app_transaction"}"#
         case "/v1/sdk/sessions/verify":
             json = #"{"access_token":"token","publisher_app_id":"app_1","counts_enabled":true,"reason":null,"expires_at":"2099-01-01T00:00:00Z"}"#
         case "/v1/cards":
@@ -101,16 +115,14 @@ private actor MockDeviceContext: CrossPromoDeviceContextProviding {
                 buildNumber: "42"
             ),
             integrity: IntegrityPreparation(
-                provider: "app_attest",
-                keyID: "key_1",
-                appTransactionJWS: "apple.signed.jws",
-                deviceVerificationID: "device-verification-id"
+                provider: "app_transaction",
+                appTransactionJWS: "apple.signed.jws"
             )
         )
     }
 
     func generateEvidence(challengeBase64: String, mode: String) async throws -> IntegrityEvidence {
-        IntegrityEvidence(provider: "app_attest", keyID: "key_1", payloadBase64: "evidence")
+        IntegrityEvidence(provider: "app_transaction", appTransactionJWS: "apple.signed.jws")
     }
 
     func resetInstallationID() async {}

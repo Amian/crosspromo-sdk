@@ -52,15 +52,11 @@ struct SDKDescriptor: Codable, Sendable {
 
 struct IntegrityPreparation: Codable, Sendable {
     let provider: String
-    let keyID: String?
     let appTransactionJWS: String?
-    let deviceVerificationID: String?
 
     enum CodingKeys: String, CodingKey {
         case provider
-        case keyID = "key_id"
         case appTransactionJWS = "app_transaction_jws"
-        case deviceVerificationID = "device_verification_id"
     }
 }
 
@@ -72,6 +68,7 @@ struct DeviceSnapshot: Sendable {
 
 struct SessionChallengeRequest: Codable, Sendable {
     let appKey: String
+    let environment: String
     let installationID: String
     let app: AppDescriptor
     let sdk: SDKDescriptor
@@ -80,6 +77,7 @@ struct SessionChallengeRequest: Codable, Sendable {
 
     enum CodingKeys: String, CodingKey {
         case appKey = "app_key"
+        case environment
         case installationID = "installation_id"
         case app
         case sdk
@@ -104,13 +102,11 @@ struct SessionChallengeResponse: Codable, Sendable {
 
 struct IntegrityEvidence: Codable, Sendable {
     let provider: String
-    let keyID: String?
-    let payloadBase64: String
+    let appTransactionJWS: String?
 
     enum CodingKeys: String, CodingKey {
         case provider
-        case keyID = "key_id"
-        case payloadBase64 = "payload_base64"
+        case appTransactionJWS = "app_transaction_jws"
     }
 }
 

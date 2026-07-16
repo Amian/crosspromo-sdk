@@ -1,3 +1,14 @@
+enum CrossPromoPlacement {
+  postScan('post_scan'),
+  result('result'),
+  settings('settings'),
+  emptyState('empty_state');
+
+  const CrossPromoPlacement(this.value);
+
+  final String value;
+}
+
 class PromoCardData {
   const PromoCardData({
     required this.cardId,
@@ -79,53 +90,41 @@ class AppContext {
 class IntegrityPreparation {
   const IntegrityPreparation({
     required this.provider,
-    this.keyId,
     this.appTransactionJws,
-    this.deviceVerificationId,
   });
 
   factory IntegrityPreparation.fromJson(Map<Object?, Object?> json) =>
       IntegrityPreparation(
         provider: json['provider']! as String,
-        keyId: json['key_id'] as String?,
         appTransactionJws: json['app_transaction_jws'] as String?,
-        deviceVerificationId: json['device_verification_id'] as String?,
       );
 
   final String provider;
-  final String? keyId;
   final String? appTransactionJws;
-  final String? deviceVerificationId;
 
   Map<String, Object?> toJson() => {
         'provider': provider,
-        'key_id': keyId,
         'app_transaction_jws': appTransactionJws,
-        'device_verification_id': deviceVerificationId,
       };
 }
 
 class IntegrityEvidence {
   const IntegrityEvidence({
     required this.provider,
-    required this.payloadBase64,
-    this.keyId,
+    this.appTransactionJws,
   });
 
   factory IntegrityEvidence.fromJson(Map<Object?, Object?> json) =>
       IntegrityEvidence(
         provider: json['provider']! as String,
-        keyId: json['key_id'] as String?,
-        payloadBase64: json['payload_base64']! as String,
+        appTransactionJws: json['app_transaction_jws'] as String?,
       );
 
   final String provider;
-  final String? keyId;
-  final String payloadBase64;
+  final String? appTransactionJws;
 
   Map<String, Object?> toJson() => {
         'provider': provider,
-        'key_id': keyId,
-        'payload_base64': payloadBase64,
+        'app_transaction_jws': appTransactionJws,
       };
 }

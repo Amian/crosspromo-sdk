@@ -12,7 +12,10 @@ let package = Package(
         .library(name: "CrossPromo", targets: ["CrossPromo"]),
     ],
     targets: [
-        .target(name: "CrossPromo"),
+        .target(
+            name: "CrossPromo",
+            resources: [.copy("PrivacyInfo.xcprivacy")]
+        ),
         .testTarget(name: "CrossPromoTests", dependencies: ["CrossPromo"]),
     ]
 )
