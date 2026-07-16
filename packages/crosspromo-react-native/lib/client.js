@@ -22,7 +22,7 @@ class CrossPromoClient {
         this.baseUrl = (configuration.baseUrl ??
             (configuration.environment === 'sandbox'
                 ? 'https://sandbox-api.crosspromo.app'
-                : 'https://api.crosspromo.app')).replace(/\/$/, '');
+                : 'https://backend-j5mh.onrender.com')).replace(/\/$/, '');
         this.timeoutMs = configuration.requestTimeoutMs ?? 10_000;
         if (this.timeoutMs <= 0) {
             throw new CrossPromoError('requestTimeoutMs must be positive');

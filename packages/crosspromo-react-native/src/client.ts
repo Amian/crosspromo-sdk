@@ -55,7 +55,7 @@ export class CrossPromoClient {
       configuration.baseUrl ??
       (configuration.environment === 'sandbox'
         ? 'https://sandbox-api.crosspromo.app'
-        : 'https://api.crosspromo.app')
+        : 'https://backend-j5mh.onrender.com')
     ).replace(/\/$/, '');
     this.timeoutMs = configuration.requestTimeoutMs ?? 10_000;
     if (this.timeoutMs <= 0) {

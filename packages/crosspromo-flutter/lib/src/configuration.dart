@@ -31,7 +31,7 @@ class CrossPromoConfiguration {
   static Uri _uriFor(CrossPromoEnvironment environment) =>
       switch (environment) {
         CrossPromoEnvironment.production => Uri.parse(
-            'https://api.crosspromo.app',
+            'https://backend-j5mh.onrender.com',
           ),
         CrossPromoEnvironment.sandbox => Uri.parse(
             'https://sandbox-api.crosspromo.app',
