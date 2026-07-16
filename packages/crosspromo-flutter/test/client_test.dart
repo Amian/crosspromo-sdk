@@ -19,7 +19,9 @@ void main() {
       platform: FakePlatform(),
     );
 
-    final card = await client.fetchCard(placement: 'post_scan');
+    final card = await client.fetchCard(
+      placement: CrossPromoPlacement.postScan,
+    );
     expect(card?.cardId, 'c_1');
     await client.recordImpression(
       card!,
@@ -45,6 +47,7 @@ void main() {
     final integrity =
         transport.requests.first.body['integrity']! as Map<String, Object?>;
     expect(integrity['device_verification_id'], 'device-verification-id');
+    expect(transport.requests[2].body['placement'], 'post_scan');
     expect(transport.requests.last.idempotencyKey, isNotNull);
   });
 }

@@ -1,4 +1,10 @@
 export type CrossPromoEnvironment = 'production' | 'sandbox';
+export declare enum CrossPromoPlacement {
+    PostScan = "post_scan",
+    Result = "result",
+    Settings = "settings",
+    EmptyState = "empty_state"
+}
 export interface CrossPromoConfiguration {
     appKey: string;
     environment?: CrossPromoEnvironment;

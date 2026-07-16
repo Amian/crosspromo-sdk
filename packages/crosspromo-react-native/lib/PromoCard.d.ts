@@ -1,8 +1,8 @@
 import React from 'react';
 import { type StyleProp, type ViewStyle } from 'react-native';
-import type { PromoCardData } from './types';
+import type { CrossPromoPlacement, PromoCardData } from './types';
 export interface PromoCardProps {
-    placement: string;
+    placement: CrossPromoPlacement;
     style?: StyleProp<ViewStyle>;
     onError?: (error: unknown) => void;
     onLoaded?: (card: PromoCardData | null) => void;

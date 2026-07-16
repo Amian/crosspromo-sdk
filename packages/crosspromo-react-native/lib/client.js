@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CrossPromoClient = exports.CrossPromoError = void 0;
+const types_1 = require("./types");
 class CrossPromoError extends Error {
     constructor(message, statusCode) {
         super(message);
@@ -31,12 +32,11 @@ class CrossPromoClient {
         return (await this.validSession()).status;
     }
     async fetchCard(placement) {
-        const normalized = placement.trim();
-        if (normalized.length < 1 || normalized.length > 64) {
-            throw new CrossPromoError('placement must contain 1 to 64 non-whitespace characters');
+        if (!Object.values(types_1.CrossPromoPlacement).includes(placement)) {
+            throw new CrossPromoError('placement must be a CrossPromoPlacement option');
         }
         const session = await this.validSession();
-        const response = await this.post('/v1/cards', { placement: normalized }, session.accessToken);
+        const response = await this.post('/v1/cards', { placement }, session.accessToken);
         return response.card ? cardFromWire(response.card) : null;
     }
     async recordImpression(card, visibleFraction, durationMs) {

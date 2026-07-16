@@ -1,3 +1,14 @@
+enum CrossPromoPlacement {
+  postScan('post_scan'),
+  result('result'),
+  settings('settings'),
+  emptyState('empty_state');
+
+  const CrossPromoPlacement(this.value);
+
+  final String value;
+}
+
 class PromoCardData {
   const PromoCardData({
     required this.cardId,

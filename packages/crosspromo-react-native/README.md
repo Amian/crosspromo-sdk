@@ -12,14 +12,22 @@ cd ios && pod install
 Configure once, before rendering your app:
 
 ```tsx
+import {
+  CrossPromo,
+  CrossPromoPlacement,
+  PromoCard,
+} from '@crosspromo/react-native';
+
 CrossPromo.configure({ appKey: 'cp_live_your_public_app_key' });
 ```
 
 Drop in a card:
 
 ```tsx
-<PromoCard placement="post_scan" />
+<PromoCard placement={CrossPromoPlacement.PostScan} />
 ```
+
+Other typed options are `Result`, `Settings`, and `EmptyState`.
 
 The SDK automatically supplies the package/bundle ID, version, build number, locale,
 and an app-scoped random installation ID.
@@ -38,8 +46,8 @@ listing. The API, not JavaScript, makes that decision.
 
 ## Custom UI
 
-Fetch with `CrossPromo.client.fetchCard(placement)`, wrap your design in
-`<CrossPromoImpressionView card={card}>...</CrossPromoImpressionView>`, and call
+Fetch with `CrossPromo.client.fetchCard(CrossPromoPlacement.PostScan)`, wrap your design
+in `<CrossPromoImpressionView card={card}>...</CrossPromoImpressionView>`, and call
 `CrossPromo.client.open(card)` on press. Clicks are counted only by the signed redirect.
 
 ## Privacy

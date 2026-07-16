@@ -1,11 +1,13 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.PromoCard = exports.CrossPromoImpressionView = exports.CrossPromoError = exports.CrossPromoClient = exports.CrossPromo = void 0;
+exports.PromoCard = exports.CrossPromoImpressionView = exports.CrossPromoPlacement = exports.CrossPromoError = exports.CrossPromoClient = exports.CrossPromo = void 0;
 var CrossPromo_1 = require("./CrossPromo");
 Object.defineProperty(exports, "CrossPromo", { enumerable: true, get: function () { return CrossPromo_1.CrossPromo; } });
 var client_1 = require("./client");
 Object.defineProperty(exports, "CrossPromoClient", { enumerable: true, get: function () { return client_1.CrossPromoClient; } });
 Object.defineProperty(exports, "CrossPromoError", { enumerable: true, get: function () { return client_1.CrossPromoError; } });
+var types_1 = require("./types");
+Object.defineProperty(exports, "CrossPromoPlacement", { enumerable: true, get: function () { return types_1.CrossPromoPlacement; } });
 var PromoCard_1 = require("./PromoCard");
 Object.defineProperty(exports, "CrossPromoImpressionView", { enumerable: true, get: function () { return PromoCard_1.CrossPromoImpressionView; } });
 Object.defineProperty(exports, "PromoCard", { enumerable: true, get: function () { return PromoCard_1.PromoCard; } });

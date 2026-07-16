@@ -26,8 +26,10 @@ void main() {
 Drop in a card:
 
 ```dart
-const PromoCard(placement: 'post_scan')
+const PromoCard(placement: CrossPromoPlacement.postScan)
 ```
+
+Other typed options are `.result`, `.settings`, and `.emptyState`.
 
 The SDK automatically supplies the package/bundle ID, version, build number, locale,
 and an app-scoped random installation ID.
@@ -47,8 +49,8 @@ listing; the API makes that decision, not the widget.
 
 ## Custom UI
 
-Use `CrossPromo.client.fetchCard(placement:)`, wrap your UI in
-`CrossPromoImpressionObserver(card: card, child: ...)`, and call
+Use `CrossPromo.client.fetchCard(placement: CrossPromoPlacement.postScan)`, wrap your UI
+in `CrossPromoImpressionObserver(card: card, child: ...)`, and call
 `CrossPromo.client.open(card)` on tap. The observer enforces the 50%-for-one-second SDK
 threshold. The API additionally validates the single-use impression token and signed
 click redirect.

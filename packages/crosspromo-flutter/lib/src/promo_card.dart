@@ -13,7 +13,7 @@ class PromoCard extends StatefulWidget {
     this.onLoaded,
   });
 
-  final String placement;
+  final CrossPromoPlacement placement;
   final ValueChanged<Object>? onError;
   final ValueChanged<PromoCardData?>? onLoaded;
 

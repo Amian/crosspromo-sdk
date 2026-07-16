@@ -4,7 +4,7 @@ import UIKit
 
 @MainActor
 public final class CrossPromoCardUIView: UIView {
-    public var placement: String {
+    public var placement: CrossPromoPlacement {
         didSet { reload() }
     }
     public var onError: ((Error) -> Void)?
@@ -24,7 +24,7 @@ public final class CrossPromoCardUIView: UIView {
     private var expandedLayoutConstraints: [NSLayoutConstraint] = []
     private var collapsedHeightConstraint: NSLayoutConstraint!
 
-    public init(placement: String) {
+    public init(placement: CrossPromoPlacement) {
         self.placement = placement
         super.init(frame: .zero)
         configureView()
@@ -221,10 +221,10 @@ private final class ViewabilityTracker {
 }
 
 public struct CrossPromoCard: UIViewRepresentable {
-    public let placement: String
+    public let placement: CrossPromoPlacement
     public var onError: ((Error) -> Void)?
 
-    public init(placement: String, onError: ((Error) -> Void)? = nil) {
+    public init(placement: CrossPromoPlacement, onError: ((Error) -> Void)? = nil) {
         self.placement = placement
         self.onError = onError
     }

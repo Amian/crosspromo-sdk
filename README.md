@@ -32,14 +32,12 @@ Please work autonomously and make the integration changes for me:
    replace it later. Do not invent a production key.
 5. Add one PromoCard to an existing, sensible screen—prefer a success/result screen,
    then settings or an empty state. Do not redesign the rest of the screen.
-6. Use a short analytics placement name such as `post_scan`, `result`, or `settings`.
+6. Use the SDK's typed placement option that best fits the screen: post-scan, result,
+   settings, or empty state. Do not pass a raw string.
 7. Apply the required native setup: iOS 16+ and App Attest on iOS; Android 23+ and
    Play Integrity on Android.
-8. Do not add IDFA, GAID, tracking permissions, fingerprinting, or a custom click event.
-9. Run the relevant formatter, tests, and a platform build. Fix integration errors.
-10. Finish by listing the files you changed and the one remaining action I need to take.
-
-Do not build a backend and do not fake impressions or clicks.
+8. Run the relevant formatter, tests, and a platform build. Fix integration errors.
+9. Finish by listing the files you changed and the one remaining action I need to take.
 ```
 
 That should leave only one manual step later: replacing the test placeholder with the
@@ -66,10 +64,10 @@ try CrossPromo.configure(appKey: "cp_test_REPLACE_ME", environment: .sandbox)
 Add the card to a SwiftUI screen:
 
 ```swift
-CrossPromoCard(placement: "post_scan")
+CrossPromoCard(placement: .postScan)
 ```
 
-UIKit apps can use `CrossPromoCardUIView(placement: "post_scan")`.
+UIKit apps can use `CrossPromoCardUIView(placement: .postScan)`.
 
 [Detailed iOS instructions](packages/crosspromo-ios/README.md)
 
@@ -97,7 +95,7 @@ CrossPromo.configure(
 Add the card:
 
 ```dart
-const PromoCard(placement: 'post_scan')
+const PromoCard(placement: CrossPromoPlacement.postScan)
 ```
 
 [Detailed Flutter instructions](packages/crosspromo-flutter/README.md)
@@ -114,7 +112,11 @@ cd ios && pod install
 Configure before rendering the app:
 
 ```tsx
-import { CrossPromo, PromoCard } from '@crosspromo/react-native';
+import {
+  CrossPromo,
+  CrossPromoPlacement,
+  PromoCard,
+} from '@crosspromo/react-native';
 
 CrossPromo.configure({
   appKey: 'cp_test_REPLACE_ME',
@@ -125,8 +127,10 @@ CrossPromo.configure({
 Add the card:
 
 ```tsx
-<PromoCard placement="post_scan" />
+<PromoCard placement={CrossPromoPlacement.PostScan} />
 ```
+
+Placements are typed options, so a misspelling is caught before the app runs.
 
 [Detailed React Native instructions](packages/crosspromo-react-native/README.md)
 

@@ -1,5 +1,6 @@
 export { CrossPromo } from './CrossPromo';
 export { CrossPromoClient, CrossPromoError } from './client';
+export { CrossPromoPlacement } from './types';
 export {
   CrossPromoImpressionView,
   PromoCard,

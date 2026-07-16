@@ -29,10 +29,11 @@ struct ExampleApp: App {
 Drop the SwiftUI card where a recommendation fits naturally:
 
 ```swift
-CrossPromoCard(placement: "post_scan")
+CrossPromoCard(placement: .postScan)
 ```
 
-UIKit apps can use `CrossPromoCardUIView(placement: "post_scan")` directly. No app
+UIKit apps can use `CrossPromoCardUIView(placement: .postScan)` directly. Available
+options are `.postScan`, `.result`, `.settings`, and `.emptyState`. No app
 version or bundle identifier configuration is needed; the SDK reads both from the app.
 
 ## Test before release
@@ -50,10 +51,10 @@ listing. A missing or sandbox AppTransaction cannot earn credits.
 
 ## Custom UI
 
-Fetch data with `try await CrossPromo.client.fetchCard(placement:)`. If you render it
-yourself, call `recordImpression(for:visibleFraction:duration:)` only after at least 50%
-has been continuously visible for one second. The server still validates the single-use
-impression token. Open `card.clickURL` for clicks; never send a separate click event.
+Fetch data with `try await CrossPromo.client.fetchCard(placement: .postScan)`. If you
+render it yourself, call `recordImpression(for:visibleFraction:duration:)` only after at
+least 50% has been continuously visible for one second. The server still validates the
+single-use impression token. Open `card.clickURL` when the card is tapped.
 
 ## Privacy
 

@@ -1,3 +1,4 @@
+import { CrossPromoPlacement } from './types';
 import type { CrossPromoConfiguration, CrossPromoPlatform, CrossPromoSessionStatus, Fetch, PromoCardData } from './types';
 export declare class CrossPromoError extends Error {
     readonly statusCode?: number | undefined;
@@ -13,7 +14,7 @@ export declare class CrossPromoClient {
     constructor(configuration: CrossPromoConfiguration, platform: CrossPromoPlatform, fetcher: Fetch);
     private readonly configuration;
     sessionStatus(): Promise<CrossPromoSessionStatus>;
-    fetchCard(placement: string): Promise<PromoCardData | null>;
+    fetchCard(placement: CrossPromoPlacement): Promise<PromoCardData | null>;
     recordImpression(card: PromoCardData, visibleFraction: number, durationMs: number): Promise<void>;
     open(card: PromoCardData): Promise<void>;
     resetInstallationId(): Promise<void>;

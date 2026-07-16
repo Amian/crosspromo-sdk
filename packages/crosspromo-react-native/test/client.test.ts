@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { CrossPromoClient } from '../src/client';
+import { CrossPromoPlacement } from '../src/types';
 import type {
   CrossPromoPlatform,
   Fetch,
@@ -58,7 +59,12 @@ test('sends app identity and only reports qualified impressions', async () => {
     fetcher,
   );
 
-  const card = await client.fetchCard('post_scan');
+  await assert.rejects(
+    client.fetchCard('post scan' as CrossPromoPlacement),
+    /CrossPromoPlacement option/,
+  );
+  assert.equal(requests.length, 0);
+  const card = await client.fetchCard(CrossPromoPlacement.PostScan);
   assert.equal(card?.cardId, 'c_1');
   await client.recordImpression(card!, 0.49, 2_000);
   assert.equal(requests.length, 3);
@@ -84,6 +90,7 @@ test('sends app identity and only reports qualified impressions', async () => {
     (challenge.integrity as Record<string, unknown>).device_verification_id,
     'device-verification-id',
   );
+  assert.equal(requests[2]!.body.placement, 'post_scan');
   const headers = requests[3]!.headers as Record<string, string>;
   assert.ok(headers['Idempotency-Key']);
 });

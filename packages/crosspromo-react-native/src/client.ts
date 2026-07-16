@@ -1,3 +1,4 @@
+import { CrossPromoPlacement } from './types';
 import type {
   CrossPromoConfiguration,
   CrossPromoPlatform,
@@ -68,17 +69,18 @@ export class CrossPromoClient {
     return (await this.validSession()).status;
   }
 
-  async fetchCard(placement: string): Promise<PromoCardData | null> {
-    const normalized = placement.trim();
-    if (normalized.length < 1 || normalized.length > 64) {
+  async fetchCard(
+    placement: CrossPromoPlacement,
+  ): Promise<PromoCardData | null> {
+    if (!Object.values(CrossPromoPlacement).includes(placement)) {
       throw new CrossPromoError(
-        'placement must contain 1 to 64 non-whitespace characters',
+        'placement must be a CrossPromoPlacement option',
       );
     }
     const session = await this.validSession();
     const response = await this.post<{ card: CardWire | null }>(
       '/v1/cards',
-      { placement: normalized },
+      { placement },
       session.accessToken,
     );
     return response.card ? cardFromWire(response.card) : null;

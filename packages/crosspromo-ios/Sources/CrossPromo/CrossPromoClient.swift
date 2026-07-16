@@ -34,18 +34,12 @@ public actor CrossPromoClient {
         try await validSession().status
     }
 
-    public func fetchCard(placement: String) async throws -> PromoCardData? {
-        let placement = placement.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !placement.isEmpty, placement.count <= 64 else {
-            throw CrossPromoError.invalidConfiguration(
-                "placement must contain 1...64 non-whitespace characters"
-            )
-        }
+    public func fetchCard(placement: CrossPromoPlacement) async throws -> PromoCardData? {
         let session = try await validSession()
         let response: CardResponse = try await request(
             path: "/v1/cards",
             method: "POST",
-            body: CardRequest(placement: placement),
+            body: CardRequest(placement: placement.rawValue),
             bearerToken: session.accessToken
         )
         return response.card
