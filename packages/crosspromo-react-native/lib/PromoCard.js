@@ -121,18 +121,18 @@ function PromoCard({ placement, style, onError, onLoaded, }) {
                         styles.card,
                         darkTheme ? styles.cardDark : styles.cardLight,
                         { backgroundColor: surface, borderColor: border },
-                    ], children: [(0, jsx_runtime_1.jsx)(react_native_1.View, { style: [
-                                styles.iconHalo,
-                                palette.glow !== null && {
-                                    shadowColor: palette.glow,
-                                    shadowOpacity: 1,
-                                    shadowRadius: 9,
-                                    shadowOffset: { width: 0, height: 3 },
-                                },
-                            ], children: (0, jsx_runtime_1.jsx)(react_native_1.Image, { source: { uri: card.iconUrl }, style: [
-                                    styles.icon,
-                                    darkTheme ? styles.iconDark : styles.iconLight,
-                                ] }) }), (0, jsx_runtime_1.jsxs)(react_native_1.View, { style: styles.copy, children: [(0, jsx_runtime_1.jsx)(react_native_1.Text, { style: [styles.appName, { color: palette.appName }], numberOfLines: 2, children: card.appName }), (0, jsx_runtime_1.jsx)(react_native_1.Text, { style: [styles.tagline, { color: palette.tagline }], numberOfLines: 2, children: card.tagline }), (0, jsx_runtime_1.jsxs)(react_native_1.View, { style: styles.disclosureRow, children: [(0, jsx_runtime_1.jsx)(react_native_1.Animated.View, { style: [styles.adChip, { backgroundColor: chipBackground }], children: (0, jsx_runtime_1.jsx)(react_native_1.Text, { style: [styles.adChipText, { color: palette.chipText }], children: "AD" }) }), (0, jsx_runtime_1.jsx)(react_native_1.Text, { style: [styles.disclosure, { color: palette.disclosure }], numberOfLines: 1, children: "Indie pick" })] })] }), (0, jsx_runtime_1.jsx)(react_native_1.Animated.View, { style: [
+                    ], children: [(0, jsx_runtime_1.jsxs)(react_native_1.View, { style: styles.headerRow, children: [(0, jsx_runtime_1.jsx)(react_native_1.View, { style: [
+                                        styles.iconHalo,
+                                        palette.glow !== null && {
+                                            shadowColor: palette.glow,
+                                            shadowOpacity: 1,
+                                            shadowRadius: 9,
+                                            shadowOffset: { width: 0, height: 3 },
+                                        },
+                                    ], children: (0, jsx_runtime_1.jsx)(react_native_1.Image, { source: { uri: card.iconUrl }, style: [
+                                            styles.icon,
+                                            darkTheme ? styles.iconDark : styles.iconLight,
+                                        ] }) }), (0, jsx_runtime_1.jsxs)(react_native_1.View, { style: styles.copy, children: [(0, jsx_runtime_1.jsx)(react_native_1.Text, { style: [styles.appName, { color: palette.appName }], numberOfLines: 2, children: card.appName }), (0, jsx_runtime_1.jsx)(react_native_1.Text, { style: [styles.tagline, { color: palette.tagline }], numberOfLines: 2, children: card.tagline })] }), (0, jsx_runtime_1.jsx)(react_native_1.Animated.View, { style: [styles.adChip, { backgroundColor: chipBackground }], children: (0, jsx_runtime_1.jsx)(react_native_1.Text, { style: [styles.adChipText, { color: palette.chipText }], children: "AD" }) })] }), (0, jsx_runtime_1.jsx)(react_native_1.Animated.View, { style: [
                                 styles.cta,
                                 { backgroundColor: ctaBackground },
                                 react_native_1.Platform.OS === 'ios' && {
@@ -196,12 +196,14 @@ function useViewability(viewRef, impressionToken, onQualified) {
 }
 const styles = react_native_1.StyleSheet.create({
     card: {
-        minHeight: 84,
         padding: 14,
         borderRadius: 20,
         borderWidth: 1,
+    },
+    headerRow: {
         flexDirection: 'row',
-        alignItems: 'center',
+        alignItems: 'flex-start',
+        marginBottom: 12,
     },
     cardLight: {
         shadowColor: '#000000',
@@ -226,19 +228,13 @@ const styles = react_native_1.StyleSheet.create({
     },
     iconLight: { borderColor: 'rgba(0,0,0,0.08)' },
     iconDark: { borderColor: 'rgba(255,255,255,0.16)' },
-    copy: { flex: 1, marginHorizontal: 12 },
+    copy: { flex: 1, marginLeft: 12, marginRight: 8 },
     appName: { fontSize: 16, fontWeight: '600', lineHeight: 20 },
-    tagline: { fontSize: 13, marginTop: 2 },
-    disclosureRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginTop: 6,
-    },
+    tagline: { fontSize: 13, marginTop: 3 },
     adChip: {
         borderRadius: 5,
         paddingHorizontal: 5,
         paddingVertical: 2.5,
-        marginRight: 6,
     },
     adChipText: {
         fontSize: 9,
@@ -246,15 +242,11 @@ const styles = react_native_1.StyleSheet.create({
         letterSpacing: 0.8,
         lineHeight: 10,
     },
-    disclosure: {
-        fontSize: 11,
-        fontWeight: '500',
-        flexShrink: 1,
-    },
     cta: {
         borderRadius: 100,
         paddingHorizontal: 16,
-        paddingVertical: 8,
+        paddingVertical: 10,
+        alignItems: 'center',
     },
     ctaText: { fontSize: 15, fontWeight: '600' },
 });

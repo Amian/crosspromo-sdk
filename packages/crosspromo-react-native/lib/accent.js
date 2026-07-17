@@ -17,7 +17,6 @@ function buildPalette(accent, darkTheme) {
     const shared = {
         appName: darkTheme ? '#F2F3F7' : '#15181D',
         tagline: darkTheme ? 'rgba(235,235,245,0.64)' : 'rgba(24,28,35,0.62)',
-        disclosure: darkTheme ? 'rgba(235,235,245,0.42)' : 'rgba(24,28,35,0.45)',
     };
     if (!accent) {
         return {

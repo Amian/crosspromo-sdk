@@ -23,7 +23,6 @@ export interface CardPalette {
     glow: string | null;
     appName: string;
     tagline: string;
-    disclosure: string;
 }
 export declare function accentFromRgb(rgb: IconAccentRgb): IconAccent;
 /**

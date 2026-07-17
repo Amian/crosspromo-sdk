@@ -160,53 +160,47 @@ export function PromoCard({
               { backgroundColor: surface, borderColor: border },
             ]}
           >
-            <View
-              style={[
-                styles.iconHalo,
-                palette.glow !== null && {
-                  shadowColor: palette.glow,
-                  shadowOpacity: 1,
-                  shadowRadius: 9,
-                  shadowOffset: { width: 0, height: 3 },
-                },
-              ]}
-            >
-              <Image
-                source={{ uri: card.iconUrl }}
+            <View style={styles.headerRow}>
+              <View
                 style={[
-                  styles.icon,
-                  darkTheme ? styles.iconDark : styles.iconLight,
+                  styles.iconHalo,
+                  palette.glow !== null && {
+                    shadowColor: palette.glow,
+                    shadowOpacity: 1,
+                    shadowRadius: 9,
+                    shadowOffset: { width: 0, height: 3 },
+                  },
                 ]}
-              />
-            </View>
-            <View style={styles.copy}>
-              <Text
-                style={[styles.appName, { color: palette.appName }]}
-                numberOfLines={2}
               >
-                {card.appName}
-              </Text>
-              <Text
-                style={[styles.tagline, { color: palette.tagline }]}
-                numberOfLines={2}
-              >
-                {card.tagline}
-              </Text>
-              <View style={styles.disclosureRow}>
-                <Animated.View
-                  style={[styles.adChip, { backgroundColor: chipBackground }]}
-                >
-                  <Text style={[styles.adChipText, { color: palette.chipText }]}>
-                    AD
-                  </Text>
-                </Animated.View>
+                <Image
+                  source={{ uri: card.iconUrl }}
+                  style={[
+                    styles.icon,
+                    darkTheme ? styles.iconDark : styles.iconLight,
+                  ]}
+                />
+              </View>
+              <View style={styles.copy}>
                 <Text
-                  style={[styles.disclosure, { color: palette.disclosure }]}
-                  numberOfLines={1}
+                  style={[styles.appName, { color: palette.appName }]}
+                  numberOfLines={2}
                 >
-                  Indie pick
+                  {card.appName}
+                </Text>
+                <Text
+                  style={[styles.tagline, { color: palette.tagline }]}
+                  numberOfLines={2}
+                >
+                  {card.tagline}
                 </Text>
               </View>
+              <Animated.View
+                style={[styles.adChip, { backgroundColor: chipBackground }]}
+              >
+                <Text style={[styles.adChipText, { color: palette.chipText }]}>
+                  AD
+                </Text>
+              </Animated.View>
             </View>
             <Animated.View
               style={[
@@ -312,12 +306,14 @@ function useViewability(
 
 const styles = StyleSheet.create({
   card: {
-    minHeight: 84,
     padding: 14,
     borderRadius: 20,
     borderWidth: 1,
+  },
+  headerRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
+    marginBottom: 12,
   },
   cardLight: {
     shadowColor: '#000000',
@@ -342,19 +338,13 @@ const styles = StyleSheet.create({
   },
   iconLight: { borderColor: 'rgba(0,0,0,0.08)' },
   iconDark: { borderColor: 'rgba(255,255,255,0.16)' },
-  copy: { flex: 1, marginHorizontal: 12 },
+  copy: { flex: 1, marginLeft: 12, marginRight: 8 },
   appName: { fontSize: 16, fontWeight: '600', lineHeight: 20 },
-  tagline: { fontSize: 13, marginTop: 2 },
-  disclosureRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 6,
-  },
+  tagline: { fontSize: 13, marginTop: 3 },
   adChip: {
     borderRadius: 5,
     paddingHorizontal: 5,
     paddingVertical: 2.5,
-    marginRight: 6,
   },
   adChipText: {
     fontSize: 9,
@@ -362,15 +352,11 @@ const styles = StyleSheet.create({
     letterSpacing: 0.8,
     lineHeight: 10,
   },
-  disclosure: {
-    fontSize: 11,
-    fontWeight: '500',
-    flexShrink: 1,
-  },
   cta: {
     borderRadius: 100,
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingVertical: 10,
+    alignItems: 'center',
   },
   ctaText: { fontSize: 15, fontWeight: '600' },
 });

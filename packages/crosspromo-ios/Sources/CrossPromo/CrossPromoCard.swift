@@ -11,14 +11,13 @@ public final class CrossPromoCardUIView: UIView {
     public var onCardLoaded: ((PromoCardData?) -> Void)?
 
     private let container = UIStackView()
+    private let headerRow = UIStackView()
     private let iconWrapper = UIView()
     private let iconView = UIImageView()
     private let textStack = UIStackView()
     private let appNameLabel = UILabel()
     private let taglineLabel = UILabel()
-    private let disclosureRow = UIStackView()
     private let adChip = InsetLabel()
-    private let disclosureLabel = UILabel()
     private let ctaButton = UIButton(type: .system)
     private var card: PromoCardData?
     private var accent: IconAccent?
@@ -73,10 +72,12 @@ public final class CrossPromoCardUIView: UIView {
         layer.shadowRadius = 14
         layer.shadowOffset = CGSize(width: 0, height: 6)
 
-        container.axis = .horizontal
-        container.alignment = .center
+        container.axis = .vertical
         container.spacing = 12
         container.translatesAutoresizingMaskIntoConstraints = false
+        headerRow.axis = .horizontal
+        headerRow.alignment = .top
+        headerRow.spacing = 12
 
         iconWrapper.translatesAutoresizingMaskIntoConstraints = false
         iconWrapper.layer.shadowRadius = 9
@@ -115,26 +116,14 @@ public final class CrossPromoCardUIView: UIView {
         adChip.clipsToBounds = true
         adChip.setContentHuggingPriority(.required, for: .horizontal)
         adChip.setContentCompressionResistancePriority(.required, for: .horizontal)
-        disclosureLabel.font = UIFontMetrics(forTextStyle: .caption2)
-            .scaledFont(for: .systemFont(ofSize: 11, weight: .medium))
-        disclosureLabel.adjustsFontForContentSizeCategory = true
-        disclosureLabel.text = "Indie pick"
-        disclosureRow.axis = .horizontal
-        disclosureRow.alignment = .center
-        disclosureRow.spacing = 6
-        disclosureRow.addArrangedSubview(adChip)
-        disclosureRow.addArrangedSubview(disclosureLabel)
-        disclosureRow.addArrangedSubview(UIView())
 
         textStack.addArrangedSubview(appNameLabel)
         textStack.addArrangedSubview(taglineLabel)
-        textStack.addArrangedSubview(disclosureRow)
-        textStack.setCustomSpacing(5, after: taglineLabel)
 
         var buttonConfiguration = UIButton.Configuration.filled()
         buttonConfiguration.cornerStyle = .capsule
         buttonConfiguration.contentInsets = NSDirectionalEdgeInsets(
-            top: 8, leading: 16, bottom: 8, trailing: 16
+            top: 10, leading: 16, bottom: 10, trailing: 16
         )
         buttonConfiguration.titleTextAttributesTransformer =
             UIConfigurationTextAttributesTransformer { attributes in
@@ -145,13 +134,13 @@ public final class CrossPromoCardUIView: UIView {
         ctaButton.configuration = buttonConfiguration
         ctaButton.layer.shadowRadius = 7
         ctaButton.layer.shadowOffset = CGSize(width: 0, height: 3)
-        ctaButton.setContentHuggingPriority(.required, for: .horizontal)
-        ctaButton.setContentCompressionResistancePriority(.required, for: .horizontal)
         ctaButton.addTarget(self, action: #selector(openCard), for: .touchUpInside)
 
         addSubview(container)
-        container.addArrangedSubview(iconWrapper)
-        container.addArrangedSubview(textStack)
+        headerRow.addArrangedSubview(iconWrapper)
+        headerRow.addArrangedSubview(textStack)
+        headerRow.addArrangedSubview(adChip)
+        container.addArrangedSubview(headerRow)
         container.addArrangedSubview(ctaButton)
         addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(openCard)))
 
@@ -247,7 +236,6 @@ public final class CrossPromoCardUIView: UIView {
             self.backgroundColor = self.makeCardBackground()
             self.adChip.backgroundColor = self.makeChipBackground()
             self.adChip.textColor = self.makeChipText()
-            self.disclosureLabel.textColor = .tertiaryLabel
             self.ctaButton.configuration?.baseBackgroundColor = self.makeCtaBackground()
             self.ctaButton.configuration?.baseForegroundColor = self.makeCtaForeground()
             self.refreshLayerColors()
