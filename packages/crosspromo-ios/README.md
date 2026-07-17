@@ -36,6 +36,13 @@ UIKit apps can use `CrossPromoCardUIView(placement: .postScan)` directly. Availa
 options are `.postScan`, `.result`, `.settings`, and `.emptyState`. No app
 version or bundle identifier configuration is needed; the SDK reads both from the app.
 
+## Local mock previews
+
+Use `CrossPromoCardPreview(card:icon:accentColor:)` in SwiftUI, or call
+`displayPreview(card:icon:accentColor:)` on `CrossPromoCardUIView`, to exercise the
+production card presentation with local data. Preview cards do not contact the backend,
+open links, or report impressions. Production integrations should use `CrossPromoCard`.
+
 ## Test before release
 
 Use your dashboard app key with the sandbox environment:

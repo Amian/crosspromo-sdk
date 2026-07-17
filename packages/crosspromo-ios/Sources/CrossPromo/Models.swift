@@ -12,6 +12,26 @@ public struct PromoCardData: Codable, Equatable, Sendable, Identifiable {
 
     public var id: String { cardID }
 
+    public init(
+        cardID: String,
+        appName: String,
+        iconURL: URL,
+        tagline: String,
+        cta: String,
+        clickURL: URL,
+        impressionToken: String,
+        expiresAt: Date
+    ) {
+        self.cardID = cardID
+        self.appName = appName
+        self.iconURL = iconURL
+        self.tagline = tagline
+        self.cta = cta
+        self.clickURL = clickURL
+        self.impressionToken = impressionToken
+        self.expiresAt = expiresAt
+    }
+
     enum CodingKeys: String, CodingKey {
         case cardID = "card_id"
         case appName = "app_name"

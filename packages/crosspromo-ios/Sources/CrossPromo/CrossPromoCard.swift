@@ -25,6 +25,7 @@ public final class CrossPromoCardUIView: UIView {
     private var loadTask: Task<Void, Never>?
     private var imageTask: Task<Void, Never>?
     private var viewabilityTracker: ViewabilityTracker?
+    private var allowsOpening = true
     private var expandedLayoutConstraints: [NSLayoutConstraint] = []
     private var collapsedHeightConstraint: NSLayoutConstraint!
 
@@ -33,6 +34,16 @@ public final class CrossPromoCardUIView: UIView {
         super.init(frame: .zero)
         configureView()
         reload()
+    }
+
+    /// Creates the production card view from local data without network,
+    /// click, or impression side effects.
+    public init(preview card: PromoCardData, icon: UIImage, accentColor: UIColor? = nil) {
+        placement = .result
+        super.init(frame: .zero)
+        allowsOpening = false
+        configureView()
+        displayPreview(card: card, icon: icon, accentColor: accentColor)
     }
 
     @available(*, unavailable)
@@ -47,6 +58,7 @@ public final class CrossPromoCardUIView: UIView {
 
     public func reload() {
         loadTask?.cancel()
+        allowsOpening = true
         setCollapsed(true)
         card = nil
         accent = nil
@@ -64,6 +76,27 @@ public final class CrossPromoCardUIView: UIView {
                 onError?(error)
             }
         }
+    }
+
+    public func displayPreview(
+        card: PromoCardData,
+        icon: UIImage,
+        accentColor: UIColor? = nil
+    ) {
+        loadTask?.cancel()
+        imageTask?.cancel()
+        allowsOpening = false
+        viewabilityTracker = nil
+        self.card = card
+        appNameLabel.text = card.appName
+        taglineLabel.text = card.tagline
+        ctaButton.configuration?.title = card.cta
+        iconView.image = icon
+        accent = accentColor.map(IconAccent.init(color:)) ?? IconAccent.extract(from: icon)
+        applyPalette(animated: false)
+        accessibilityLabel = "Ad. \(card.appName). \(card.tagline)"
+        setCollapsed(false)
+        animateEntrance()
     }
 
     private func configureView() {
@@ -392,7 +425,7 @@ public final class CrossPromoCardUIView: UIView {
     }
 
     @objc private func openCard() {
-        guard let url = card?.clickURL else { return }
+        guard allowsOpening, let url = card?.clickURL else { return }
         UIApplication.shared.open(url)
     }
 }
@@ -483,5 +516,55 @@ public struct CrossPromoCard: UIViewRepresentable {
         uiView.onError = onError
         if uiView.placement != placement { uiView.placement = placement }
     }
+
+    public func sizeThatFits(
+        _ proposal: ProposedViewSize,
+        uiView: CrossPromoCardUIView,
+        context: Context
+    ) -> CGSize? {
+        fittingSize(for: proposal, uiView: uiView)
+    }
+}
+
+/// SwiftUI wrapper for deterministic local card previews. It never contacts
+/// CrossPromo or reports analytics.
+public struct CrossPromoCardPreview: UIViewRepresentable {
+    public let card: PromoCardData
+    public let icon: UIImage
+    public let accentColor: UIColor?
+
+    public init(card: PromoCardData, icon: UIImage, accentColor: UIColor? = nil) {
+        self.card = card
+        self.icon = icon
+        self.accentColor = accentColor
+    }
+
+    public func makeUIView(context: Context) -> CrossPromoCardUIView {
+        CrossPromoCardUIView(preview: card, icon: icon, accentColor: accentColor)
+    }
+
+    public func updateUIView(_ uiView: CrossPromoCardUIView, context: Context) {
+        uiView.displayPreview(card: card, icon: icon, accentColor: accentColor)
+    }
+
+    public func sizeThatFits(
+        _ proposal: ProposedViewSize,
+        uiView: CrossPromoCardUIView,
+        context: Context
+    ) -> CGSize? {
+        fittingSize(for: proposal, uiView: uiView)
+    }
+}
+
+private func fittingSize(
+    for proposal: ProposedViewSize,
+    uiView: CrossPromoCardUIView
+) -> CGSize? {
+    guard let width = proposal.width else { return nil }
+    return uiView.systemLayoutSizeFitting(
+        CGSize(width: width, height: UIView.layoutFittingCompressedSize.height),
+        withHorizontalFittingPriority: .required,
+        verticalFittingPriority: .fittingSizeLevel
+    )
 }
 #endif

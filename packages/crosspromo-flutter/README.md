@@ -2,8 +2,8 @@
 
 CrossPromo currently supports Flutter apps on iOS only.
 
-Version `0.3.2` adds icon-derived card colors while keeping the built-in card
-compact and readable when a host app places it in a tall flex region.
+Version `0.3.3` adds deterministic local card previews while retaining the
+icon-derived colors and responsive sizing introduced in `0.3.2`.
 
 ## Install
 
@@ -37,6 +37,13 @@ const PromoCard(placement: CrossPromoPlacement.postScan)
 Other typed options are `.result`, `.settings`, and `.emptyState`.
 
 The SDK automatically supplies the iOS bundle ID, version, and build number.
+
+## Local mock previews
+
+Use `PromoCardPreview` with a `PromoCardData` value and local `ImageProvider` to
+exercise the production card presentation without backend requests, click handling,
+or impression reporting. This is intended for sample apps, widget tests, and design
+review; production integrations should continue to use `PromoCard`.
 
 ## App Store verification
 

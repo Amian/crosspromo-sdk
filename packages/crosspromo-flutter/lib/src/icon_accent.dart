@@ -17,6 +17,15 @@ class IconAccent {
   final double saturation;
   final double brightness;
 
+  factory IconAccent.fromColor(Color color) {
+    final hsv = HSVColor.fromColor(color);
+    return IconAccent(
+      hue: hsv.hue,
+      saturation: hsv.saturation.clamp(0.55, 0.85).toDouble(),
+      brightness: hsv.value,
+    );
+  }
+
   /// Samples the icon and picks the strongest saturated hue family, ignoring
   /// transparent, near-white, near-black, and gray pixels.
   static Future<IconAccent?> extract(ui.Image image) async {

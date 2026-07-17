@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PromoCard = PromoCard;
+exports.PromoCardPreview = PromoCardPreview;
 exports.CrossPromoImpressionView = CrossPromoImpressionView;
 const jsx_runtime_1 = require("react/jsx-runtime");
 const react_1 = require("react");
@@ -98,50 +99,61 @@ function PromoCard({ placement, style, onError, onLoaded, }) {
     }, [card, tint]);
     if (!card)
         return null;
+    return ((0, jsx_runtime_1.jsx)(PromoCardPresentation, { card: card, iconSource: { uri: card.iconUrl }, accent: accent, entrance: entrance, tint: tint, style: style, onPress: () => void CrossPromo_1.CrossPromo.client.open(card), reportImpression: true }));
+}
+/** Renders the production card from local data without network or analytics. */
+function PromoCardPreview({ card, iconSource, accent, colorScheme, style, onPress, }) {
+    const settled = (0, react_1.useRef)(new react_native_1.Animated.Value(1)).current;
+    return ((0, jsx_runtime_1.jsx)(PromoCardPresentation, { card: card, iconSource: iconSource, accent: accent ? (0, accent_1.accentFromRgb)(accent) : null, colorScheme: colorScheme, entrance: settled, tint: settled, style: style, onPress: onPress ?? (() => { }), reportImpression: false }));
+}
+function PromoCardPresentation({ card, iconSource, accent, colorScheme, entrance, tint, style, onPress, reportImpression, }) {
+    const systemScheme = (0, react_native_1.useColorScheme)();
+    const darkTheme = (colorScheme ?? systemScheme) === 'dark';
     const palette = (0, accent_1.buildPalette)(accent, darkTheme);
     const crossFade = (from, to) => tint.interpolate({ inputRange: [0, 1], outputRange: [from, to] });
     const surface = crossFade(palette.surface, palette.surfaceTinted);
     const border = crossFade(palette.border, palette.borderTinted);
     const ctaBackground = crossFade(palette.cta, palette.ctaTinted);
     const chipBackground = crossFade(palette.chipBackground, palette.chipBackgroundTinted);
-    return ((0, jsx_runtime_1.jsx)(CrossPromoImpressionView, { card: card, style: style, children: (0, jsx_runtime_1.jsx)(react_native_1.Animated.View, { style: {
-                opacity: entrance,
-                transform: [
-                    {
-                        translateY: entrance.interpolate({
-                            inputRange: [0, 1],
-                            outputRange: [10, 0],
-                        }),
-                    },
-                ],
-            }, children: (0, jsx_runtime_1.jsx)(react_native_1.Pressable, { accessibilityRole: "button", accessibilityLabel: `Ad. ${card.appName}. ${card.tagline}`, onPress: () => void CrossPromo_1.CrossPromo.client.open(card), style: ({ pressed }) => [
-                    pressed && styles.pressed,
-                    pressed && { transform: [{ scale: 0.98 }] },
-                ], children: (0, jsx_runtime_1.jsxs)(react_native_1.Animated.View, { style: [
-                        styles.card,
-                        darkTheme ? styles.cardDark : styles.cardLight,
-                        { backgroundColor: surface, borderColor: border },
-                    ], children: [(0, jsx_runtime_1.jsx)(react_native_1.View, { style: [
-                                styles.iconHalo,
-                                palette.glow !== null && {
-                                    shadowColor: palette.glow,
-                                    shadowOpacity: 1,
-                                    shadowRadius: 9,
-                                    shadowOffset: { width: 0, height: 3 },
-                                },
-                            ], children: (0, jsx_runtime_1.jsx)(react_native_1.Image, { source: { uri: card.iconUrl }, style: [
-                                    styles.icon,
-                                    darkTheme ? styles.iconDark : styles.iconLight,
-                                ] }) }), (0, jsx_runtime_1.jsxs)(react_native_1.View, { style: styles.copy, children: [(0, jsx_runtime_1.jsx)(react_native_1.Text, { style: [styles.appName, { color: palette.appName }], numberOfLines: 2, children: card.appName }), (0, jsx_runtime_1.jsx)(react_native_1.Text, { style: [styles.tagline, { color: palette.tagline }], numberOfLines: 2, children: card.tagline }), (0, jsx_runtime_1.jsxs)(react_native_1.View, { style: styles.disclosureRow, children: [(0, jsx_runtime_1.jsx)(react_native_1.Animated.View, { style: [styles.adChip, { backgroundColor: chipBackground }], children: (0, jsx_runtime_1.jsx)(react_native_1.Text, { style: [styles.adChipText, { color: palette.chipText }], children: "AD" }) }), (0, jsx_runtime_1.jsx)(react_native_1.Text, { style: [styles.disclosure, { color: palette.disclosure }], numberOfLines: 1, children: "Indie pick" })] })] }), (0, jsx_runtime_1.jsx)(react_native_1.Animated.View, { style: [
-                                styles.cta,
-                                { backgroundColor: ctaBackground },
-                                react_native_1.Platform.OS === 'ios' && {
-                                    shadowColor: accent ? palette.ctaTinted : palette.cta,
-                                    shadowOpacity: darkTheme ? 0.42 : 0.28,
-                                    shadowRadius: 7,
-                                    shadowOffset: { width: 0, height: 3 },
-                                },
-                            ], children: (0, jsx_runtime_1.jsx)(react_native_1.Text, { style: [styles.ctaText, { color: palette.onCta }], children: card.cta }) })] }) }) }) }));
+    const content = ((0, jsx_runtime_1.jsx)(react_native_1.Animated.View, { style: {
+            opacity: entrance,
+            transform: [
+                {
+                    translateY: entrance.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [10, 0],
+                    }),
+                },
+            ],
+        }, children: (0, jsx_runtime_1.jsx)(react_native_1.Pressable, { accessibilityRole: "button", accessibilityLabel: `Ad. ${card.appName}. ${card.tagline}`, onPress: onPress, style: ({ pressed }) => [
+                pressed && styles.pressed,
+                pressed && { transform: [{ scale: 0.98 }] },
+            ], children: (0, jsx_runtime_1.jsxs)(react_native_1.Animated.View, { style: [
+                    styles.card,
+                    darkTheme ? styles.cardDark : styles.cardLight,
+                    { backgroundColor: surface, borderColor: border },
+                ], children: [(0, jsx_runtime_1.jsx)(react_native_1.View, { style: [
+                            styles.iconHalo,
+                            palette.glow !== null && {
+                                shadowColor: palette.glow,
+                                shadowOpacity: 1,
+                                shadowRadius: 9,
+                                shadowOffset: { width: 0, height: 3 },
+                            },
+                        ], children: (0, jsx_runtime_1.jsx)(react_native_1.Image, { source: iconSource, style: [
+                                styles.icon,
+                                darkTheme ? styles.iconDark : styles.iconLight,
+                            ] }) }), (0, jsx_runtime_1.jsxs)(react_native_1.View, { style: styles.copy, children: [(0, jsx_runtime_1.jsx)(react_native_1.Text, { style: [styles.appName, { color: palette.appName }], numberOfLines: 2, children: card.appName }), (0, jsx_runtime_1.jsx)(react_native_1.Text, { style: [styles.tagline, { color: palette.tagline }], numberOfLines: 2, children: card.tagline }), (0, jsx_runtime_1.jsxs)(react_native_1.View, { style: styles.disclosureRow, children: [(0, jsx_runtime_1.jsx)(react_native_1.Animated.View, { style: [styles.adChip, { backgroundColor: chipBackground }], children: (0, jsx_runtime_1.jsx)(react_native_1.Text, { style: [styles.adChipText, { color: palette.chipText }], children: "AD" }) }), (0, jsx_runtime_1.jsx)(react_native_1.Text, { style: [styles.disclosure, { color: palette.disclosure }], numberOfLines: 1, children: "Indie pick" })] })] }), (0, jsx_runtime_1.jsx)(react_native_1.Animated.View, { style: [
+                            styles.cta,
+                            { backgroundColor: ctaBackground },
+                            react_native_1.Platform.OS === 'ios' && {
+                                shadowColor: accent ? palette.ctaTinted : palette.cta,
+                                shadowOpacity: darkTheme ? 0.42 : 0.28,
+                                shadowRadius: 7,
+                                shadowOffset: { width: 0, height: 3 },
+                            },
+                        ], children: (0, jsx_runtime_1.jsx)(react_native_1.Text, { style: [styles.ctaText, { color: palette.onCta }], children: card.cta }) })] }) }) }));
+    return reportImpression ? ((0, jsx_runtime_1.jsx)(CrossPromoImpressionView, { card: card, style: style, children: content })) : ((0, jsx_runtime_1.jsx)(react_native_1.View, { style: style, children: content }));
 }
 function CrossPromoImpressionView({ card, children, style, }) {
     const viewRef = (0, react_1.useRef)(null);

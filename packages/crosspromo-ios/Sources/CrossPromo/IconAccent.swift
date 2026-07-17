@@ -8,6 +8,16 @@ struct IconAccent: Equatable, Sendable {
     let saturation: CGFloat
     let brightness: CGFloat
 
+    init(color: UIColor) {
+        var hue: CGFloat = 0
+        var saturation: CGFloat = 0
+        var brightness: CGFloat = 0
+        color.getHue(&hue, saturation: &saturation, brightness: &brightness, alpha: nil)
+        self.hue = hue
+        self.saturation = min(max(saturation, 0.55), 0.85)
+        self.brightness = brightness
+    }
+
     /// Downscales the icon and picks the strongest saturated hue family,
     /// ignoring transparent, near-white, near-black, and gray pixels.
     static func extract(from image: UIImage) -> IconAccent? {
@@ -73,15 +83,7 @@ struct IconAccent: Equatable, Sendable {
             blue: blues[best] / weights[best],
             alpha: 1
         )
-        var hue: CGFloat = 0
-        var saturation: CGFloat = 0
-        var brightness: CGFloat = 0
-        color.getHue(&hue, saturation: &saturation, brightness: &brightness, alpha: nil)
-        return IconAccent(
-            hue: hue,
-            saturation: min(max(saturation, 0.55), 0.85),
-            brightness: brightness
-        )
+        return IconAccent(color: color)
     }
 
     /// Saturated fill for the call-to-action capsule.

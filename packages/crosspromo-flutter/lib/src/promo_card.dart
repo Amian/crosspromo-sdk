@@ -22,6 +22,32 @@ class PromoCard extends StatefulWidget {
   State<PromoCard> createState() => _PromoCardState();
 }
 
+/// Renders the production card design from local data without networking,
+/// click handling, or impression reporting.
+class PromoCardPreview extends StatelessWidget {
+  const PromoCardPreview({
+    required this.card,
+    required this.icon,
+    super.key,
+    this.accentColor,
+    this.onTap,
+  });
+
+  final PromoCardData card;
+  final ImageProvider icon;
+  final Color? accentColor;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) => PromoCardLayout(
+        card: card,
+        iconProvider: icon,
+        accent: accentColor == null ? null : IconAccent.fromColor(accentColor!),
+        recordImpression: false,
+        onTap: onTap ?? () {},
+      );
+}
+
 class _PromoCardState extends State<PromoCard> {
   PromoCardData? _card;
   IconAccent? _accent;
@@ -126,11 +152,15 @@ class PromoCardLayout extends StatelessWidget {
     required this.card,
     required this.onTap,
     this.accent,
+    this.iconProvider,
+    this.recordImpression = true,
     super.key,
   });
 
   final PromoCardData card;
   final IconAccent? accent;
+  final ImageProvider? iconProvider;
+  final bool recordImpression;
   final VoidCallback onTap;
 
   @override
@@ -140,132 +170,132 @@ class PromoCardLayout extends StatelessWidget {
     final palette = _CardPalette.from(accent, theme);
     final reduceMotion = MediaQuery.of(context).disableAnimations;
 
-    return Align(
-      alignment: Alignment.topCenter,
-      child: CrossPromoImpressionObserver(
-        card: card,
-        child: Semantics(
-          label: 'Ad. ${card.appName}. ${card.tagline}',
-          button: true,
-          child: _Entrance(
-            key: ValueKey<String>(card.cardId),
-            enabled: !reduceMotion,
-            child: AnimatedContainer(
-              key: ValueKey<String>('crosspromo-card-${card.cardId}'),
-              duration: const Duration(milliseconds: 320),
-              curve: Curves.easeOut,
-              decoration: BoxDecoration(
-                color: palette.surface,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: palette.hairline),
-                boxShadow: darkTheme
-                    ? const <BoxShadow>[]
-                    : const <BoxShadow>[
-                        BoxShadow(
-                          color: Color(0x12000000),
-                          blurRadius: 14,
-                          offset: Offset(0, 6),
-                        ),
-                      ],
-              ),
-              child: Material(
-                type: MaterialType.transparency,
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(20),
-                  onTap: onTap,
-                  child: Padding(
-                    padding: const EdgeInsets.all(14),
-                    child: Row(
-                      children: [
-                        _IconWithGlow(
-                          url: card.iconUrl.toString(),
-                          glow: palette.glow,
-                          darkTheme: darkTheme,
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.start,
+    final content = Semantics(
+      label: 'Ad. ${card.appName}. ${card.tagline}',
+      button: true,
+      child: _Entrance(
+        key: ValueKey<String>(card.cardId),
+        enabled: !reduceMotion,
+        child: AnimatedContainer(
+          key: ValueKey<String>('crosspromo-card-${card.cardId}'),
+          duration: const Duration(milliseconds: 320),
+          curve: Curves.easeOut,
+          decoration: BoxDecoration(
+            color: palette.surface,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: palette.hairline),
+            boxShadow: darkTheme
+                ? const <BoxShadow>[]
+                : const <BoxShadow>[
+                    BoxShadow(
+                      color: Color(0x12000000),
+                      blurRadius: 14,
+                      offset: Offset(0, 6),
+                    ),
+                  ],
+          ),
+          child: Material(
+            type: MaterialType.transparency,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(20),
+              onTap: onTap,
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: Row(
+                  children: [
+                    _IconWithGlow(
+                      image:
+                          iconProvider ?? NetworkImage(card.iconUrl.toString()),
+                      glow: palette.glow,
+                      darkTheme: darkTheme,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            card.appName,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              height: 1.25,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            card.tagline,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              fontSize: 13,
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Row(
                             children: [
-                              Text(
-                                card.appName,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: theme.textTheme.titleMedium?.copyWith(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  height: 1.25,
+                              AnimatedContainer(
+                                duration: const Duration(milliseconds: 320),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 5,
+                                  vertical: 2.5,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: palette.chipBackground,
+                                  borderRadius: BorderRadius.circular(5),
+                                ),
+                                child: Text(
+                                  'AD',
+                                  style: TextStyle(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: 0.8,
+                                    height: 1,
+                                    color: palette.chipText,
+                                  ),
                                 ),
                               ),
-                              const SizedBox(height: 2),
-                              Text(
-                                card.tagline,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  fontSize: 13,
-                                  color: theme.colorScheme.onSurfaceVariant,
+                              const SizedBox(width: 6),
+                              Flexible(
+                                child: Text(
+                                  'Indie pick',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: theme.textTheme.labelSmall?.copyWith(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w500,
+                                    color: theme.colorScheme.outline,
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(height: 6),
-                              Row(
-                                children: [
-                                  AnimatedContainer(
-                                    duration: const Duration(milliseconds: 320),
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 5,
-                                      vertical: 2.5,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: palette.chipBackground,
-                                      borderRadius: BorderRadius.circular(5),
-                                    ),
-                                    child: Text(
-                                      'AD',
-                                      style: TextStyle(
-                                        fontSize: 9,
-                                        fontWeight: FontWeight.w800,
-                                        letterSpacing: 0.8,
-                                        height: 1,
-                                        color: palette.chipText,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Flexible(
-                                    child: Text(
-                                      'Indie pick',
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style:
-                                          theme.textTheme.labelSmall?.copyWith(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w500,
-                                        color: theme.colorScheme.outline,
-                                      ),
-                                    ),
-                                  ),
-                                ],
                               ),
                             ],
                           ),
-                        ),
-                        const SizedBox(width: 12),
-                        _CtaButton(
-                          label: card.cta,
-                          palette: palette,
-                          onTap: onTap,
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 12),
+                    _CtaButton(
+                      label: card.cta,
+                      palette: palette,
+                      onTap: onTap,
+                    ),
+                  ],
                 ),
               ),
             ),
           ),
         ),
       ),
+    );
+    return Align(
+      alignment: Alignment.topCenter,
+      child: recordImpression
+          ? CrossPromoImpressionObserver(card: card, child: content)
+          : content,
     );
   }
 }
@@ -298,12 +328,12 @@ class _Entrance extends StatelessWidget {
 
 class _IconWithGlow extends StatelessWidget {
   const _IconWithGlow({
-    required this.url,
+    required this.image,
     required this.glow,
     required this.darkTheme,
   });
 
-  final String url;
+  final ImageProvider image;
   final Color? glow;
   final bool darkTheme;
 
@@ -330,8 +360,8 @@ class _IconWithGlow extends StatelessWidget {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(14),
-        child: Image.network(
-          url,
+        child: Image(
+          image: image,
           width: 56,
           height: 56,
           fit: BoxFit.cover,

@@ -5,4 +5,5 @@ export 'src/configuration.dart'
     show CrossPromoConfiguration, CrossPromoEnvironment;
 export 'src/models.dart'
     show CrossPromoPlacement, CrossPromoSessionStatus, PromoCardData;
-export 'src/promo_card.dart' show PromoCard, CrossPromoImpressionObserver;
+export 'src/promo_card.dart'
+    show PromoCard, PromoCardPreview, CrossPromoImpressionObserver;

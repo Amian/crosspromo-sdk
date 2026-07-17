@@ -88,7 +88,7 @@ test('sends app identity and only reports qualified impressions', async () => {
   });
   assert.deepEqual(challenge.sdk, {
     name: 'crosspromo-react-native',
-    version: '0.3.2',
+    version: '0.3.3',
   });
   assert.equal(challenge.installation_id, undefined);
   assert.equal(challenge.locale, undefined);

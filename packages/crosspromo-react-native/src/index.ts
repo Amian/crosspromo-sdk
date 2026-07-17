@@ -4,8 +4,10 @@ export { CrossPromoPlacement } from './types';
 export {
   CrossPromoImpressionView,
   PromoCard,
+  PromoCardPreview,
   type CrossPromoImpressionViewProps,
   type PromoCardProps,
+  type PromoCardPreviewProps,
 } from './PromoCard';
 export type {
   CrossPromoConfiguration,

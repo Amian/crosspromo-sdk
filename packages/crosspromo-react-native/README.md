@@ -33,6 +33,13 @@ Other typed options are `Result`, `Settings`, and `EmptyState`.
 
 The SDK automatically supplies the iOS bundle ID, version, and build number.
 
+## Local mock previews
+
+Use `PromoCardPreview` with a `PromoCardData` object and local `iconSource` to exercise
+the production card presentation without backend requests, click handling, or impression
+reporting. This is intended for sample apps, component tests, and design review;
+production integrations should continue to use `PromoCard`.
+
 ## App Store verification
 
 The minimum supported version is iOS 16. CrossPromo does not require an App Attest

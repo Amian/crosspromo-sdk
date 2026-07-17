@@ -6,6 +6,7 @@ import {
   Dimensions,
   Easing,
   Image,
+  type ImageSourcePropType,
   Platform,
   Pressable,
   StyleSheet,
@@ -19,7 +20,11 @@ import {
 import { accentFromRgb, buildPalette, type IconAccent } from './accent';
 import { CrossPromo } from './CrossPromo';
 import { NativeCrossPromoPlatform } from './native';
-import type { CrossPromoPlacement, PromoCardData } from './types';
+import type {
+  CrossPromoPlacement,
+  IconAccentRgb,
+  PromoCardData,
+} from './types';
 
 export interface PromoCardProps {
   placement: CrossPromoPlacement;
@@ -118,6 +123,80 @@ export function PromoCard({
   }, [card, tint]);
 
   if (!card) return null;
+
+  return (
+    <PromoCardPresentation
+      card={card}
+      iconSource={{ uri: card.iconUrl }}
+      accent={accent}
+      entrance={entrance}
+      tint={tint}
+      style={style}
+      onPress={() => void CrossPromo.client.open(card)}
+      reportImpression
+    />
+  );
+}
+
+export interface PromoCardPreviewProps {
+  card: PromoCardData;
+  iconSource: ImageSourcePropType;
+  accent?: IconAccentRgb;
+  colorScheme?: 'light' | 'dark';
+  style?: StyleProp<ViewStyle>;
+  onPress?: () => void;
+}
+
+/** Renders the production card from local data without network or analytics. */
+export function PromoCardPreview({
+  card,
+  iconSource,
+  accent,
+  colorScheme,
+  style,
+  onPress,
+}: PromoCardPreviewProps): React.JSX.Element {
+  const settled = useRef(new Animated.Value(1)).current;
+  return (
+    <PromoCardPresentation
+      card={card}
+      iconSource={iconSource}
+      accent={accent ? accentFromRgb(accent) : null}
+      colorScheme={colorScheme}
+      entrance={settled}
+      tint={settled}
+      style={style}
+      onPress={onPress ?? (() => {})}
+      reportImpression={false}
+    />
+  );
+}
+
+interface PromoCardPresentationProps {
+  card: PromoCardData;
+  iconSource: ImageSourcePropType;
+  accent: IconAccent | null;
+  colorScheme?: 'light' | 'dark';
+  entrance: Animated.Value;
+  tint: Animated.Value;
+  style?: StyleProp<ViewStyle>;
+  onPress: () => void;
+  reportImpression: boolean;
+}
+
+function PromoCardPresentation({
+  card,
+  iconSource,
+  accent,
+  colorScheme,
+  entrance,
+  tint,
+  style,
+  onPress,
+  reportImpression,
+}: PromoCardPresentationProps): React.JSX.Element {
+  const systemScheme = useColorScheme();
+  const darkTheme = (colorScheme ?? systemScheme) === 'dark';
   const palette = buildPalette(accent, darkTheme);
   const crossFade = (from: string, to: string) =>
     tint.interpolate({ inputRange: [0, 1], outputRange: [from, to] });
@@ -129,8 +208,7 @@ export function PromoCard({
     palette.chipBackgroundTinted,
   );
 
-  return (
-    <CrossPromoImpressionView card={card} style={style}>
+  const content = (
       <Animated.View
         style={{
           opacity: entrance,
@@ -147,7 +225,7 @@ export function PromoCard({
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={`Ad. ${card.appName}. ${card.tagline}`}
-          onPress={() => void CrossPromo.client.open(card)}
+          onPress={onPress}
           style={({ pressed }) => [
             pressed && styles.pressed,
             pressed && { transform: [{ scale: 0.98 }] },
@@ -172,7 +250,7 @@ export function PromoCard({
               ]}
             >
               <Image
-                source={{ uri: card.iconUrl }}
+                source={iconSource}
                 style={[
                   styles.icon,
                   darkTheme ? styles.iconDark : styles.iconLight,
@@ -227,7 +305,14 @@ export function PromoCard({
           </Animated.View>
         </Pressable>
       </Animated.View>
+  );
+
+  return reportImpression ? (
+    <CrossPromoImpressionView card={card} style={style}>
+      {content}
     </CrossPromoImpressionView>
+  ) : (
+    <View style={style}>{content}</View>
   );
 }
 
