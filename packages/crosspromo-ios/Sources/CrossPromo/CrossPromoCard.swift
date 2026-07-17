@@ -14,10 +14,11 @@ public final class CrossPromoCardUIView: UIView {
     private let iconWrapper = UIView()
     private let iconView = UIImageView()
     private let textStack = UIStackView()
-    private let subtitleRow = UIStackView()
     private let appNameLabel = UILabel()
     private let taglineLabel = UILabel()
+    private let disclosureRow = UIStackView()
     private let adChip = InsetLabel()
+    private let disclosureLabel = UILabel()
     private let ctaButton = UIButton(type: .system)
     private var card: PromoCardData?
     private var accent: IconAccent?
@@ -105,22 +106,30 @@ public final class CrossPromoCardUIView: UIView {
         adChip.attributedText = NSAttributedString(
             string: "AD",
             attributes: [
-                .font: UIFont.systemFont(ofSize: 7.5, weight: .heavy),
-                .kern: 0.5,
+                .font: UIFont.systemFont(ofSize: 9, weight: .heavy),
+                .kern: 0.8,
             ]
         )
-        adChip.layer.cornerRadius = 4
+        adChip.layer.cornerRadius = 5
         adChip.layer.cornerCurve = .continuous
         adChip.clipsToBounds = true
-        adChip.translatesAutoresizingMaskIntoConstraints = false
+        adChip.setContentHuggingPriority(.required, for: .horizontal)
+        adChip.setContentCompressionResistancePriority(.required, for: .horizontal)
+        disclosureLabel.font = UIFontMetrics(forTextStyle: .caption2)
+            .scaledFont(for: .systemFont(ofSize: 11, weight: .medium))
+        disclosureLabel.adjustsFontForContentSizeCategory = true
+        disclosureLabel.text = "Indie pick"
+        disclosureRow.axis = .horizontal
+        disclosureRow.alignment = .center
+        disclosureRow.spacing = 6
+        disclosureRow.addArrangedSubview(adChip)
+        disclosureRow.addArrangedSubview(disclosureLabel)
+        disclosureRow.addArrangedSubview(UIView())
 
-        subtitleRow.axis = .horizontal
-        subtitleRow.alignment = .center
-        subtitleRow.spacing = 10
-        subtitleRow.addArrangedSubview(taglineLabel)
-        subtitleRow.addArrangedSubview(ctaButton)
         textStack.addArrangedSubview(appNameLabel)
-        textStack.addArrangedSubview(subtitleRow)
+        textStack.addArrangedSubview(taglineLabel)
+        textStack.addArrangedSubview(disclosureRow)
+        textStack.setCustomSpacing(5, after: taglineLabel)
 
         var buttonConfiguration = UIButton.Configuration.filled()
         buttonConfiguration.cornerStyle = .capsule
@@ -143,7 +152,7 @@ public final class CrossPromoCardUIView: UIView {
         addSubview(container)
         container.addArrangedSubview(iconWrapper)
         container.addArrangedSubview(textStack)
-        addSubview(adChip)
+        container.addArrangedSubview(ctaButton)
         addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(openCard)))
 
         NSLayoutConstraint.activate([
@@ -157,10 +166,8 @@ public final class CrossPromoCardUIView: UIView {
         expandedLayoutConstraints = [
             container.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 14),
             container.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -14),
-            container.topAnchor.constraint(equalTo: topAnchor, constant: 22),
+            container.topAnchor.constraint(equalTo: topAnchor, constant: 14),
             container.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -14),
-            adChip.topAnchor.constraint(equalTo: topAnchor, constant: 8),
-            adChip.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
             heightAnchor.constraint(greaterThanOrEqualToConstant: 84),
         ]
         collapsedHeightConstraint = heightAnchor.constraint(equalToConstant: 0)
@@ -240,6 +247,7 @@ public final class CrossPromoCardUIView: UIView {
             self.backgroundColor = self.makeCardBackground()
             self.adChip.backgroundColor = self.makeChipBackground()
             self.adChip.textColor = self.makeChipText()
+            self.disclosureLabel.textColor = .tertiaryLabel
             self.ctaButton.configuration?.baseBackgroundColor = self.makeCtaBackground()
             self.ctaButton.configuration?.baseForegroundColor = self.makeCtaForeground()
             self.refreshLayerColors()
@@ -391,7 +399,7 @@ public final class CrossPromoCardUIView: UIView {
 
 /// Small pill label used for the "AD" disclosure chip.
 private final class InsetLabel: UILabel {
-    private let contentInsets = UIEdgeInsets(top: 1.5, left: 4, bottom: 1.5, right: 4)
+    private let contentInsets = UIEdgeInsets(top: 2.5, left: 5, bottom: 2.5, right: 5)
 
     override func drawText(in rect: CGRect) {
         super.drawText(in: rect.inset(by: contentInsets))

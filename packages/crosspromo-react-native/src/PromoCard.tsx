@@ -160,64 +160,68 @@ export function PromoCard({
               { backgroundColor: surface, borderColor: border },
             ]}
           >
-            <View style={styles.headerRow}>
-              <View
+            <View
+              style={[
+                styles.iconHalo,
+                palette.glow !== null && {
+                  shadowColor: palette.glow,
+                  shadowOpacity: 1,
+                  shadowRadius: 9,
+                  shadowOffset: { width: 0, height: 3 },
+                },
+              ]}
+            >
+              <Image
+                source={{ uri: card.iconUrl }}
                 style={[
-                  styles.iconHalo,
-                  palette.glow !== null && {
-                    shadowColor: palette.glow,
-                    shadowOpacity: 1,
-                    shadowRadius: 9,
-                    shadowOffset: { width: 0, height: 3 },
-                  },
+                  styles.icon,
+                  darkTheme ? styles.iconDark : styles.iconLight,
                 ]}
+              />
+            </View>
+            <View style={styles.copy}>
+              <Text
+                style={[styles.appName, { color: palette.appName }]}
+                numberOfLines={2}
               >
-                <Image
-                  source={{ uri: card.iconUrl }}
-                  style={[
-                    styles.icon,
-                    darkTheme ? styles.iconDark : styles.iconLight,
-                  ]}
-                />
-              </View>
-              <View style={styles.copy}>
-                <Text
-                  style={[styles.appName, { color: palette.appName }]}
-                  numberOfLines={2}
+                {card.appName}
+              </Text>
+              <Text
+                style={[styles.tagline, { color: palette.tagline }]}
+                numberOfLines={2}
+              >
+                {card.tagline}
+              </Text>
+              <View style={styles.disclosureRow}>
+                <Animated.View
+                  style={[styles.adChip, { backgroundColor: chipBackground }]}
                 >
-                  {card.appName}
-                </Text>
-                <View style={styles.subtitleRow}>
-                  <Text
-                    style={[styles.tagline, { color: palette.tagline }]}
-                    numberOfLines={2}
-                  >
-                    {card.tagline}
+                  <Text style={[styles.adChipText, { color: palette.chipText }]}>
+                    AD
                   </Text>
-                  <Animated.View
-                    style={[
-                      styles.cta,
-                      { backgroundColor: ctaBackground },
-                      Platform.OS === 'ios' && {
-                        shadowColor: accent ? palette.ctaTinted : palette.cta,
-                        shadowOpacity: darkTheme ? 0.42 : 0.28,
-                        shadowRadius: 7,
-                        shadowOffset: { width: 0, height: 3 },
-                      },
-                    ]}
-                  >
-                    <Text style={[styles.ctaText, { color: palette.onCta }]}>
-                      {card.cta}
-                    </Text>
-                  </Animated.View>
-                </View>
+                </Animated.View>
+                <Text
+                  style={[styles.disclosure, { color: palette.disclosure }]}
+                  numberOfLines={1}
+                >
+                  Indie pick
+                </Text>
               </View>
             </View>
             <Animated.View
-              style={[styles.adChip, { backgroundColor: chipBackground }]}
+              style={[
+                styles.cta,
+                { backgroundColor: ctaBackground },
+                Platform.OS === 'ios' && {
+                  shadowColor: accent ? palette.ctaTinted : palette.cta,
+                  shadowOpacity: darkTheme ? 0.42 : 0.28,
+                  shadowRadius: 7,
+                  shadowOffset: { width: 0, height: 3 },
+                },
+              ]}
             >
-              <Text style={[styles.adChipText, { color: palette.chipText }]}>
-                AD
+              <Text style={[styles.ctaText, { color: palette.onCta }]}>
+                {card.cta}
               </Text>
             </Animated.View>
           </Animated.View>
@@ -308,20 +312,12 @@ function useViewability(
 
 const styles = StyleSheet.create({
   card: {
-    paddingTop: 22,
-    paddingBottom: 14,
-    paddingHorizontal: 14,
+    minHeight: 84,
+    padding: 14,
     borderRadius: 20,
     borderWidth: 1,
-  },
-  headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  subtitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 3,
   },
   cardLight: {
     shadowColor: '#000000',
@@ -346,22 +342,30 @@ const styles = StyleSheet.create({
   },
   iconLight: { borderColor: 'rgba(0,0,0,0.08)' },
   iconDark: { borderColor: 'rgba(255,255,255,0.16)' },
-  copy: { flex: 1, marginLeft: 12 },
+  copy: { flex: 1, marginHorizontal: 12 },
   appName: { fontSize: 16, fontWeight: '600', lineHeight: 20 },
-  tagline: { fontSize: 13, flex: 1, marginRight: 10 },
+  tagline: { fontSize: 13, marginTop: 2 },
+  disclosureRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 6,
+  },
   adChip: {
-    position: 'absolute',
-    top: 8,
-    left: 8,
-    borderRadius: 4,
-    paddingHorizontal: 4,
-    paddingVertical: 1.5,
+    borderRadius: 5,
+    paddingHorizontal: 5,
+    paddingVertical: 2.5,
+    marginRight: 6,
   },
   adChipText: {
-    fontSize: 8,
+    fontSize: 9,
     fontWeight: '800',
-    letterSpacing: 0.5,
-    lineHeight: 9,
+    letterSpacing: 0.8,
+    lineHeight: 10,
+  },
+  disclosure: {
+    fontSize: 11,
+    fontWeight: '500',
+    flexShrink: 1,
   },
   cta: {
     borderRadius: 100,

@@ -25,6 +25,7 @@ export interface CardPalette {
   glow: string | null;
   appName: string;
   tagline: string;
+  disclosure: string;
 }
 
 export function accentFromRgb(rgb: IconAccentRgb): IconAccent {
@@ -50,6 +51,7 @@ export function buildPalette(
   const shared = {
     appName: darkTheme ? '#F2F3F7' : '#15181D',
     tagline: darkTheme ? 'rgba(235,235,245,0.64)' : 'rgba(24,28,35,0.62)',
+    disclosure: darkTheme ? 'rgba(235,235,245,0.42)' : 'rgba(24,28,35,0.45)',
   };
   if (!accent) {
     return {
