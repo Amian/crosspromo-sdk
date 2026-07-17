@@ -132,16 +132,16 @@ function PromoCard({ placement, style, onError, onLoaded, }) {
                                     ], children: (0, jsx_runtime_1.jsx)(react_native_1.Image, { source: { uri: card.iconUrl }, style: [
                                             styles.icon,
                                             darkTheme ? styles.iconDark : styles.iconLight,
-                                        ] }) }), (0, jsx_runtime_1.jsxs)(react_native_1.View, { style: styles.copy, children: [(0, jsx_runtime_1.jsx)(react_native_1.Text, { style: [styles.appName, { color: palette.appName }], numberOfLines: 2, children: card.appName }), (0, jsx_runtime_1.jsx)(react_native_1.Text, { style: [styles.tagline, { color: palette.tagline }], numberOfLines: 2, children: card.tagline })] }), (0, jsx_runtime_1.jsx)(react_native_1.Animated.View, { style: [styles.adChip, { backgroundColor: chipBackground }], children: (0, jsx_runtime_1.jsx)(react_native_1.Text, { style: [styles.adChipText, { color: palette.chipText }], children: "AD" }) })] }), (0, jsx_runtime_1.jsx)(react_native_1.Animated.View, { style: [
-                                styles.cta,
-                                { backgroundColor: ctaBackground },
-                                react_native_1.Platform.OS === 'ios' && {
-                                    shadowColor: accent ? palette.ctaTinted : palette.cta,
-                                    shadowOpacity: darkTheme ? 0.42 : 0.28,
-                                    shadowRadius: 7,
-                                    shadowOffset: { width: 0, height: 3 },
-                                },
-                            ], children: (0, jsx_runtime_1.jsx)(react_native_1.Text, { style: [styles.ctaText, { color: palette.onCta }], children: card.cta }) })] }) }) }) }));
+                                        ] }) }), (0, jsx_runtime_1.jsxs)(react_native_1.View, { style: styles.copy, children: [(0, jsx_runtime_1.jsx)(react_native_1.Text, { style: [styles.appName, { color: palette.appName }], numberOfLines: 2, children: card.appName }), (0, jsx_runtime_1.jsxs)(react_native_1.View, { style: styles.subtitleRow, children: [(0, jsx_runtime_1.jsx)(react_native_1.Text, { style: [styles.tagline, { color: palette.tagline }], numberOfLines: 2, children: card.tagline }), (0, jsx_runtime_1.jsx)(react_native_1.Animated.View, { style: [
+                                                        styles.cta,
+                                                        { backgroundColor: ctaBackground },
+                                                        react_native_1.Platform.OS === 'ios' && {
+                                                            shadowColor: accent ? palette.ctaTinted : palette.cta,
+                                                            shadowOpacity: darkTheme ? 0.42 : 0.28,
+                                                            shadowRadius: 7,
+                                                            shadowOffset: { width: 0, height: 3 },
+                                                        },
+                                                    ], children: (0, jsx_runtime_1.jsx)(react_native_1.Text, { style: [styles.ctaText, { color: palette.onCta }], children: card.cta }) })] })] })] }), (0, jsx_runtime_1.jsx)(react_native_1.Animated.View, { style: [styles.adChip, { backgroundColor: chipBackground }], children: (0, jsx_runtime_1.jsx)(react_native_1.Text, { style: [styles.adChipText, { color: palette.chipText }], children: "AD" }) })] }) }) }) }));
 }
 function CrossPromoImpressionView({ card, children, style, }) {
     const viewRef = (0, react_1.useRef)(null);
@@ -196,14 +196,20 @@ function useViewability(viewRef, impressionToken, onQualified) {
 }
 const styles = react_native_1.StyleSheet.create({
     card: {
-        padding: 14,
+        paddingTop: 22,
+        paddingBottom: 14,
+        paddingHorizontal: 14,
         borderRadius: 20,
         borderWidth: 1,
     },
     headerRow: {
         flexDirection: 'row',
-        alignItems: 'flex-start',
-        marginBottom: 12,
+        alignItems: 'center',
+    },
+    subtitleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 3,
     },
     cardLight: {
         shadowColor: '#000000',
@@ -228,25 +234,27 @@ const styles = react_native_1.StyleSheet.create({
     },
     iconLight: { borderColor: 'rgba(0,0,0,0.08)' },
     iconDark: { borderColor: 'rgba(255,255,255,0.16)' },
-    copy: { flex: 1, marginLeft: 12, marginRight: 8 },
+    copy: { flex: 1, marginLeft: 12 },
     appName: { fontSize: 16, fontWeight: '600', lineHeight: 20 },
-    tagline: { fontSize: 13, marginTop: 3 },
+    tagline: { fontSize: 13, flex: 1, marginRight: 10 },
     adChip: {
-        borderRadius: 5,
-        paddingHorizontal: 5,
-        paddingVertical: 2.5,
+        position: 'absolute',
+        top: 8,
+        left: 8,
+        borderRadius: 4,
+        paddingHorizontal: 4,
+        paddingVertical: 1.5,
     },
     adChipText: {
-        fontSize: 9,
+        fontSize: 8,
         fontWeight: '800',
-        letterSpacing: 0.8,
-        lineHeight: 10,
+        letterSpacing: 0.5,
+        lineHeight: 9,
     },
     cta: {
         borderRadius: 100,
         paddingHorizontal: 16,
-        paddingVertical: 10,
-        alignItems: 'center',
+        paddingVertical: 8,
     },
     ctaText: { fontSize: 15, fontWeight: '600' },
 });

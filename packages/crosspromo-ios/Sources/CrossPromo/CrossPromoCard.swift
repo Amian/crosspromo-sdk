@@ -11,10 +11,10 @@ public final class CrossPromoCardUIView: UIView {
     public var onCardLoaded: ((PromoCardData?) -> Void)?
 
     private let container = UIStackView()
-    private let headerRow = UIStackView()
     private let iconWrapper = UIView()
     private let iconView = UIImageView()
     private let textStack = UIStackView()
+    private let subtitleRow = UIStackView()
     private let appNameLabel = UILabel()
     private let taglineLabel = UILabel()
     private let adChip = InsetLabel()
@@ -72,12 +72,10 @@ public final class CrossPromoCardUIView: UIView {
         layer.shadowRadius = 14
         layer.shadowOffset = CGSize(width: 0, height: 6)
 
-        container.axis = .vertical
+        container.axis = .horizontal
+        container.alignment = .center
         container.spacing = 12
         container.translatesAutoresizingMaskIntoConstraints = false
-        headerRow.axis = .horizontal
-        headerRow.alignment = .top
-        headerRow.spacing = 12
 
         iconWrapper.translatesAutoresizingMaskIntoConstraints = false
         iconWrapper.layer.shadowRadius = 9
@@ -107,23 +105,27 @@ public final class CrossPromoCardUIView: UIView {
         adChip.attributedText = NSAttributedString(
             string: "AD",
             attributes: [
-                .font: UIFont.systemFont(ofSize: 9, weight: .heavy),
-                .kern: 0.8,
+                .font: UIFont.systemFont(ofSize: 7.5, weight: .heavy),
+                .kern: 0.5,
             ]
         )
-        adChip.layer.cornerRadius = 5
+        adChip.layer.cornerRadius = 4
         adChip.layer.cornerCurve = .continuous
         adChip.clipsToBounds = true
-        adChip.setContentHuggingPriority(.required, for: .horizontal)
-        adChip.setContentCompressionResistancePriority(.required, for: .horizontal)
+        adChip.translatesAutoresizingMaskIntoConstraints = false
 
+        subtitleRow.axis = .horizontal
+        subtitleRow.alignment = .center
+        subtitleRow.spacing = 10
+        subtitleRow.addArrangedSubview(taglineLabel)
+        subtitleRow.addArrangedSubview(ctaButton)
         textStack.addArrangedSubview(appNameLabel)
-        textStack.addArrangedSubview(taglineLabel)
+        textStack.addArrangedSubview(subtitleRow)
 
         var buttonConfiguration = UIButton.Configuration.filled()
         buttonConfiguration.cornerStyle = .capsule
         buttonConfiguration.contentInsets = NSDirectionalEdgeInsets(
-            top: 10, leading: 16, bottom: 10, trailing: 16
+            top: 8, leading: 16, bottom: 8, trailing: 16
         )
         buttonConfiguration.titleTextAttributesTransformer =
             UIConfigurationTextAttributesTransformer { attributes in
@@ -134,14 +136,14 @@ public final class CrossPromoCardUIView: UIView {
         ctaButton.configuration = buttonConfiguration
         ctaButton.layer.shadowRadius = 7
         ctaButton.layer.shadowOffset = CGSize(width: 0, height: 3)
+        ctaButton.setContentHuggingPriority(.required, for: .horizontal)
+        ctaButton.setContentCompressionResistancePriority(.required, for: .horizontal)
         ctaButton.addTarget(self, action: #selector(openCard), for: .touchUpInside)
 
         addSubview(container)
-        headerRow.addArrangedSubview(iconWrapper)
-        headerRow.addArrangedSubview(textStack)
-        headerRow.addArrangedSubview(adChip)
-        container.addArrangedSubview(headerRow)
-        container.addArrangedSubview(ctaButton)
+        container.addArrangedSubview(iconWrapper)
+        container.addArrangedSubview(textStack)
+        addSubview(adChip)
         addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(openCard)))
 
         NSLayoutConstraint.activate([
@@ -155,8 +157,10 @@ public final class CrossPromoCardUIView: UIView {
         expandedLayoutConstraints = [
             container.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 14),
             container.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -14),
-            container.topAnchor.constraint(equalTo: topAnchor, constant: 14),
+            container.topAnchor.constraint(equalTo: topAnchor, constant: 22),
             container.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -14),
+            adChip.topAnchor.constraint(equalTo: topAnchor, constant: 8),
+            adChip.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
             heightAnchor.constraint(greaterThanOrEqualToConstant: 84),
         ]
         collapsedHeightConstraint = heightAnchor.constraint(equalToConstant: 0)
@@ -387,7 +391,7 @@ public final class CrossPromoCardUIView: UIView {
 
 /// Small pill label used for the "AD" disclosure chip.
 private final class InsetLabel: UILabel {
-    private let contentInsets = UIEdgeInsets(top: 2.5, left: 5, bottom: 2.5, right: 5)
+    private let contentInsets = UIEdgeInsets(top: 1.5, left: 4, bottom: 1.5, right: 4)
 
     override func drawText(in rect: CGRect) {
         super.drawText(in: rect.inset(by: contentInsets))

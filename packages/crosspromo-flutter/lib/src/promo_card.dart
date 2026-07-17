@@ -147,14 +147,11 @@ class _PromoCardState extends State<PromoCard> {
               child: InkWell(
                 borderRadius: BorderRadius.circular(20),
                 onTap: () => CrossPromo.client.open(card),
-                child: Padding(
-                  padding: const EdgeInsets.all(14),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                child: Stack(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(14, 22, 14, 14),
+                      child: Row(
                         children: [
                           _IconWithGlow(
                             url: card.iconUrl.toString(),
@@ -178,50 +175,61 @@ class _PromoCardState extends State<PromoCard> {
                                   ),
                                 ),
                                 const SizedBox(height: 3),
-                                Text(
-                                  card.tagline,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    fontSize: 13,
-                                    color: theme.colorScheme.onSurfaceVariant,
-                                  ),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        card.tagline,
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                        style:
+                                            theme.textTheme.bodySmall?.copyWith(
+                                          fontSize: 13,
+                                          color: theme
+                                              .colorScheme.onSurfaceVariant,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    _CtaButton(
+                                      label: card.cta,
+                                      palette: palette,
+                                      onTap: () => CrossPromo.client.open(card),
+                                    ),
+                                  ],
                                 ),
                               ],
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          AnimatedContainer(
-                            duration: const Duration(milliseconds: 320),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 5,
-                              vertical: 2.5,
-                            ),
-                            decoration: BoxDecoration(
-                              color: palette.chipBackground,
-                              borderRadius: BorderRadius.circular(5),
-                            ),
-                            child: Text(
-                              'AD',
-                              style: TextStyle(
-                                fontSize: 9,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 0.8,
-                                height: 1,
-                                color: palette.chipText,
-                              ),
-                            ),
-                          ),
                         ],
                       ),
-                      const SizedBox(height: 12),
-                      _CtaButton(
-                        label: card.cta,
-                        palette: palette,
-                        onTap: () => CrossPromo.client.open(card),
+                    ),
+                    Positioned(
+                      top: 8,
+                      left: 8,
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 320),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 4,
+                          vertical: 1.5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: palette.chipBackground,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          'AD',
+                          style: TextStyle(
+                            fontSize: 7.5,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.5,
+                            height: 1,
+                            color: palette.chipText,
+                          ),
+                        ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -343,12 +351,11 @@ class _CtaButton extends StatelessWidget {
           borderRadius: BorderRadius.circular(100),
           onTap: onTap,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Text(
               label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
