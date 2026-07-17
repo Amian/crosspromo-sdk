@@ -1,6 +1,6 @@
 name: crosspromo_sdk
 description: Privacy-first native recommendation cards for the CrossPromo network.
-version: 0.3.0
+version: 0.3.1
 repository: https://github.com/Amian/crosspromo-sdk
 
 environment:

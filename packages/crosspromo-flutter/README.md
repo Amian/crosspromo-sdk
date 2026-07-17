@@ -2,6 +2,9 @@
 
 CrossPromo currently supports Flutter apps on iOS only.
 
+Version `0.3.1` keeps the built-in card compact and readable even when the host app
+uses a full-width global `FilledButtonTheme` or places the card in a tall flex region.
+
 ## Install
 
 Add the package to `pubspec.yaml`, then run `flutter pub get`:
