@@ -15,46 +15,77 @@ void main() {
     expiresAt: DateTime.utc(2099),
   );
 
-  testWidgets('stays readable under a full-width host button theme',
+  testWidgets('keeps its intrinsic height inside a tall host slot',
+      (tester) async {
+    await tester.pumpWidget(_host(card: card, width: 360, height: 220));
+
+    expect(tester.takeException(), isNull);
+    _expectContent(card);
+
+    final cardRect = tester.getRect(
+      find.byKey(ValueKey<String>('crosspromo-card-${card.cardId}')),
+    );
+    final observerRect =
+        tester.getRect(find.byType(CrossPromoImpressionObserver));
+    expect(cardRect.height, inInclusiveRange(84, 160));
+    expect(cardRect.width, 360);
+    expect(observerRect, cardRect);
+  });
+
+  testWidgets('stays readable on a narrow host with enlarged text',
       (tester) async {
     await tester.pumpWidget(
-      MaterialApp(
-        theme: ThemeData(
-          filledButtonTheme: FilledButtonThemeData(
-            style: FilledButton.styleFrom(
-              minimumSize: const Size.fromHeight(52),
-            ),
-          ),
-        ),
-        home: Scaffold(
-          body: SizedBox(
-            width: 360,
-            height: 220,
-            child: Align(
-              alignment: Alignment.topCenter,
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxHeight: 112),
-                child: PromoCardPresentation(card: card, onTap: _noop),
-              ),
-            ),
-          ),
-        ),
-      ),
+      _host(card: card, width: 320, height: 240, textScale: 1.3),
     );
 
     expect(tester.takeException(), isNull);
-    expect(find.text(card.appName), findsOneWidget);
-    expect(find.text(card.tagline), findsOneWidget);
-    expect(find.text('Ad · Indie pick'), findsOneWidget);
-    expect(find.text(card.cta), findsOneWidget);
+    _expectContent(card);
 
     final titleRect = tester.getRect(find.text(card.appName));
-    final buttonRect =
-        tester.getRect(find.widgetWithText(FilledButton, card.cta));
+    final ctaRect = tester.getRect(find.text(card.cta));
     expect(titleRect.width, greaterThan(80));
-    expect(buttonRect.width, inInclusiveRange(56, 92));
-    expect(buttonRect.right, lessThanOrEqualTo(360));
+    expect(ctaRect.right, lessThanOrEqualTo(320));
   });
+}
+
+Widget _host({
+  required PromoCardData card,
+  required double width,
+  required double height,
+  double textScale = 1,
+}) {
+  return MaterialApp(
+    theme: ThemeData(
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          minimumSize: const Size.fromHeight(52),
+        ),
+      ),
+    ),
+    home: Scaffold(
+      body: Builder(
+        builder: (context) => MediaQuery(
+          data: MediaQuery.of(context).copyWith(
+            disableAnimations: true,
+            textScaler: TextScaler.linear(textScale),
+          ),
+          child: SizedBox(
+            width: width,
+            height: height,
+            child: PromoCardLayout(card: card, onTap: _noop),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+void _expectContent(PromoCardData card) {
+  expect(find.text(card.appName), findsOneWidget);
+  expect(find.text(card.tagline), findsOneWidget);
+  expect(find.text('AD'), findsOneWidget);
+  expect(find.text('Indie pick'), findsOneWidget);
+  expect(find.text(card.cta), findsOneWidget);
 }
 
 void _noop() {}

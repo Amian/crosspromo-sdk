@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import 'client.dart';
+import 'icon_accent.dart';
 import 'models.dart';
 
 class PromoCard extends StatefulWidget {
@@ -23,7 +24,10 @@ class PromoCard extends StatefulWidget {
 
 class _PromoCardState extends State<PromoCard> {
   PromoCardData? _card;
+  IconAccent? _accent;
   int _loadGeneration = 0;
+  ImageStream? _iconStream;
+  ImageStreamListener? _iconListener;
 
   @override
   void initState() {
@@ -37,10 +41,20 @@ class _PromoCardState extends State<PromoCard> {
     if (oldWidget.placement != widget.placement) _load();
   }
 
+  @override
+  void dispose() {
+    _stopIconStream();
+    super.dispose();
+  }
+
   Future<void> _load() async {
     final generation = ++_loadGeneration;
-    if (mounted && _card != null) {
-      setState(() => _card = null);
+    _stopIconStream();
+    if (mounted && (_card != null || _accent != null)) {
+      setState(() {
+        _card = null;
+        _accent = null;
+      });
     }
     try {
       final card = await CrossPromo.client.fetchCard(
@@ -49,6 +63,7 @@ class _PromoCardState extends State<PromoCard> {
       if (!mounted || generation != _loadGeneration) return;
       setState(() => _card = card);
       widget.onLoaded?.call(card);
+      if (card != null) _resolveAccent(card, generation);
     } on Object catch (error) {
       if (mounted && generation == _loadGeneration) {
         widget.onError?.call(error);
@@ -56,19 +71,198 @@ class _PromoCardState extends State<PromoCard> {
     }
   }
 
+  /// Resolves the icon through the shared image cache (the same provider the
+  /// visible [Image.network] uses, so the icon is only fetched once) and
+  /// derives the card's brand accent from it.
+  void _resolveAccent(PromoCardData card, int generation) {
+    final stream =
+        NetworkImage(card.iconUrl.toString()).resolve(ImageConfiguration.empty);
+    final listener = ImageStreamListener(
+      (imageInfo, _) {
+        final image = imageInfo.image.clone();
+        imageInfo.dispose();
+        unawaited(
+          IconAccent.extract(image).then((accent) {
+            image.dispose();
+            if (!mounted || generation != _loadGeneration || accent == null) {
+              return;
+            }
+            setState(() => _accent = accent);
+          }),
+        );
+      },
+      onError: (_, __) {},
+    );
+    _iconStream = stream;
+    _iconListener = listener;
+    stream.addListener(listener);
+  }
+
+  void _stopIconStream() {
+    final stream = _iconStream;
+    final listener = _iconListener;
+    if (stream != null && listener != null) {
+      stream.removeListener(listener);
+    }
+    _iconStream = null;
+    _iconListener = null;
+  }
+
   @override
   Widget build(BuildContext context) {
     final card = _card;
     if (card == null) return const SizedBox.shrink();
+    return PromoCardLayout(
+      card: card,
+      accent: _accent,
+      onTap: () => CrossPromo.client.open(card),
+    );
+  }
+}
+
+@visibleForTesting
+class PromoCardLayout extends StatelessWidget {
+  const PromoCardLayout({
+    required this.card,
+    required this.onTap,
+    this.accent,
+    super.key,
+  });
+
+  final PromoCardData card;
+  final IconAccent? accent;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final darkTheme = theme.brightness == Brightness.dark;
+    final palette = _CardPalette.from(accent, theme);
+    final reduceMotion = MediaQuery.of(context).disableAnimations;
+
     return Align(
       alignment: Alignment.topCenter,
       child: CrossPromoImpressionObserver(
         card: card,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxHeight: 112),
-          child: PromoCardPresentation(
-            card: card,
-            onTap: () => CrossPromo.client.open(card),
+        child: Semantics(
+          label: 'Ad. ${card.appName}. ${card.tagline}',
+          button: true,
+          child: _Entrance(
+            key: ValueKey<String>(card.cardId),
+            enabled: !reduceMotion,
+            child: AnimatedContainer(
+              key: ValueKey<String>('crosspromo-card-${card.cardId}'),
+              duration: const Duration(milliseconds: 320),
+              curve: Curves.easeOut,
+              decoration: BoxDecoration(
+                color: palette.surface,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: palette.hairline),
+                boxShadow: darkTheme
+                    ? const <BoxShadow>[]
+                    : const <BoxShadow>[
+                        BoxShadow(
+                          color: Color(0x12000000),
+                          blurRadius: 14,
+                          offset: Offset(0, 6),
+                        ),
+                      ],
+              ),
+              child: Material(
+                type: MaterialType.transparency,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(20),
+                  onTap: onTap,
+                  child: Padding(
+                    padding: const EdgeInsets.all(14),
+                    child: Row(
+                      children: [
+                        _IconWithGlow(
+                          url: card.iconUrl.toString(),
+                          glow: palette.glow,
+                          darkTheme: darkTheme,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                card.appName,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  height: 1.25,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                card.tagline,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  fontSize: 13,
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Row(
+                                children: [
+                                  AnimatedContainer(
+                                    duration: const Duration(milliseconds: 320),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 5,
+                                      vertical: 2.5,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: palette.chipBackground,
+                                      borderRadius: BorderRadius.circular(5),
+                                    ),
+                                    child: Text(
+                                      'AD',
+                                      style: TextStyle(
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.w800,
+                                        letterSpacing: 0.8,
+                                        height: 1,
+                                        color: palette.chipText,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Flexible(
+                                    child: Text(
+                                      'Indie pick',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style:
+                                          theme.textTheme.labelSmall?.copyWith(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w500,
+                                        color: theme.colorScheme.outline,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        _CtaButton(
+                          label: card.cta,
+                          palette: palette,
+                          onTap: onTap,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
           ),
         ),
       ),
@@ -76,121 +270,193 @@ class _PromoCardState extends State<PromoCard> {
   }
 }
 
-@visibleForTesting
-class PromoCardPresentation extends StatelessWidget {
-  const PromoCardPresentation({
-    required this.card,
-    required this.onTap,
-    super.key,
+/// One orchestrated entrance: the card fades in and rises as it appears.
+class _Entrance extends StatelessWidget {
+  const _Entrance({required this.enabled, required this.child, super.key});
+
+  final bool enabled;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!enabled) return child;
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: 0, end: 1),
+      duration: const Duration(milliseconds: 420),
+      curve: Curves.easeOutCubic,
+      child: child,
+      builder: (context, progress, child) => Opacity(
+        opacity: progress,
+        child: Transform.translate(
+          offset: Offset(0, 10 * (1 - progress)),
+          child: child,
+        ),
+      ),
+    );
+  }
+}
+
+class _IconWithGlow extends StatelessWidget {
+  const _IconWithGlow({
+    required this.url,
+    required this.glow,
+    required this.darkTheme,
   });
 
-  final PromoCardData card;
+  final String url;
+  final Color? glow;
+  final bool darkTheme;
+
+  @override
+  Widget build(BuildContext context) {
+    final glow = this.glow;
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 320),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: glow == null
+            ? const <BoxShadow>[]
+            : <BoxShadow>[
+                BoxShadow(
+                    color: glow, blurRadius: 9, offset: const Offset(0, 3)),
+              ],
+      ),
+      foregroundDecoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: darkTheme ? const Color(0x29FFFFFF) : const Color(0x14000000),
+          width: 0.5,
+        ),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(14),
+        child: Image.network(
+          url,
+          width: 56,
+          height: 56,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => const SizedBox.square(
+            dimension: 56,
+            child: ColoredBox(color: Color(0x11000000)),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CtaButton extends StatelessWidget {
+  const _CtaButton({
+    required this.label,
+    required this.palette,
+    required this.onTap,
+  });
+
+  final String label;
+  final _CardPalette palette;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Semantics(
-      label: 'Ad. ${card.appName}. ${card.tagline}',
-      button: true,
-      child: Material(
-        color: theme.colorScheme.surfaceContainerLow,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-          side: BorderSide(color: theme.dividerColor),
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 320),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [palette.ctaTop, palette.ctaBottom],
         ),
-        clipBehavior: Clip.antiAlias,
+        borderRadius: BorderRadius.circular(100),
+        boxShadow: [
+          BoxShadow(
+            color: palette.ctaShadow,
+            blurRadius: 7,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Material(
+        type: MaterialType.transparency,
         child: InkWell(
+          borderRadius: BorderRadius.circular(100),
           onTap: onTap,
           child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Image.network(
-                    card.iconUrl.toString(),
-                    width: 58,
-                    height: 58,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => const SizedBox.square(
-                      dimension: 58,
-                      child: ColoredBox(color: Color(0x11000000)),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        card.appName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          color: theme.colorScheme.onSurface,
-                        ),
-                      ),
-                      Text(
-                        card.tagline,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                      Text(
-                        'Ad · Indie pick',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: theme.colorScheme.outline,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                ConstrainedBox(
-                  constraints: const BoxConstraints(
-                    minWidth: 56,
-                    maxWidth: 92,
-                    minHeight: 36,
-                    maxHeight: 40,
-                  ),
-                  child: FilledButton(
-                    onPressed: onTap,
-                    style: FilledButton.styleFrom(
-                      minimumSize: const Size(56, 36),
-                      maximumSize: const Size(92, 40),
-                      padding: const EdgeInsets.symmetric(horizontal: 14),
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      textStyle: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    child: Text(
-                      card.cta,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      softWrap: false,
-                    ),
-                  ),
-                ),
-              ],
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: palette.onCta,
+              ),
             ),
           ),
         ),
       ),
     );
   }
+}
+
+/// Resolved colors for one theme. Accent-derived when the icon yields a brand
+/// color, otherwise a refined neutral look driven by the host theme.
+class _CardPalette {
+  const _CardPalette({
+    required this.surface,
+    required this.hairline,
+    required this.chipBackground,
+    required this.chipText,
+    required this.ctaTop,
+    required this.ctaBottom,
+    required this.onCta,
+    required this.ctaShadow,
+    required this.glow,
+  });
+
+  factory _CardPalette.from(IconAccent? accent, ThemeData theme) {
+    final darkTheme = theme.brightness == Brightness.dark;
+    final base = darkTheme ? const Color(0xFF1C1C20) : Colors.white;
+    if (accent == null) {
+      final primary = theme.colorScheme.primary;
+      return _CardPalette(
+        surface: base,
+        hairline: theme.colorScheme.outlineVariant,
+        chipBackground: theme.colorScheme.onSurface.withAlpha(20),
+        chipText: theme.colorScheme.onSurfaceVariant,
+        ctaTop: primary,
+        ctaBottom: primary,
+        onCta: theme.colorScheme.onPrimary,
+        ctaShadow: primary.withAlpha(darkTheme ? 96 : 66),
+        glow: null,
+      );
+    }
+    final cta = accent.ctaColor(darkTheme: darkTheme);
+    final ctaHsv = HSVColor.fromColor(cta);
+    return _CardPalette(
+      surface: Color.alphaBlend(accent.washColor(darkTheme: darkTheme), base),
+      hairline: accent.hairlineColor(darkTheme: darkTheme),
+      chipBackground: accent.chipBackgroundColor(darkTheme: darkTheme),
+      chipText: accent.chipTextColor(darkTheme: darkTheme),
+      ctaTop: ctaHsv
+          .withValue((ctaHsv.value + 0.05).clamp(0.0, 1.0).toDouble())
+          .toColor(),
+      ctaBottom: ctaHsv
+          .withValue((ctaHsv.value - 0.05).clamp(0.0, 1.0).toDouble())
+          .toColor(),
+      onCta: accent.onCtaColor(darkTheme: darkTheme),
+      ctaShadow: cta.withAlpha(darkTheme ? 107 : 71),
+      glow: accent.glowColor(darkTheme: darkTheme),
+    );
+  }
+
+  final Color surface;
+  final Color hairline;
+  final Color chipBackground;
+  final Color chipText;
+  final Color ctaTop;
+  final Color ctaBottom;
+  final Color onCta;
+  final Color ctaShadow;
+  final Color? glow;
 }
 
 class CrossPromoImpressionObserver extends StatefulWidget {

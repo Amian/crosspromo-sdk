@@ -153,7 +153,7 @@ public actor CrossPromoClient {
 
 @MainActor
 public enum CrossPromo {
-    public nonisolated static let sdkVersion = "0.3.0"
+    public nonisolated static let sdkVersion = "0.3.2"
     private static var configuredClient: CrossPromoClient?
 
     public static func configure(

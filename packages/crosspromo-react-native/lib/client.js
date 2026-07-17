@@ -80,7 +80,7 @@ class CrossPromoClient {
                 version: app.version,
                 build_number: app.build_number,
             },
-            sdk: { name: 'crosspromo-react-native', version: '0.3.0' },
+            sdk: { name: 'crosspromo-react-native', version: '0.3.2' },
         });
         const evidence = await this.platform.generateEvidence({
             challenge_base64: challenge.challenge_base64,

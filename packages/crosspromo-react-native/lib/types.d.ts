@@ -38,6 +38,11 @@ export interface IntegrityEvidence {
     provider: 'app_transaction' | 'play_integrity' | 'none';
     app_transaction_jws: string | null;
 }
+export interface IconAccentRgb {
+    red: number;
+    green: number;
+    blue: number;
+}
 export interface CrossPromoPlatform {
     getAppContext(): Promise<AppContext>;
     generateEvidence(input: {
@@ -46,5 +51,11 @@ export interface CrossPromoPlatform {
         cloud_project_number?: number;
     }): Promise<IntegrityEvidence>;
     openUrl(url: string): Promise<void>;
+    /**
+     * Dominant color of the promoted app's icon, used to tint the promo card.
+     * Optional: older native builds may not implement it; callers must fall
+     * back to a neutral palette.
+     */
+    extractIconAccent?(url: string): Promise<IconAccentRgb | null>;
 }
 export type Fetch = (input: string, init?: RequestInit) => Promise<Pick<Response, 'ok' | 'status' | 'text'>>;

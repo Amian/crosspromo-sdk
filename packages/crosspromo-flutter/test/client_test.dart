@@ -42,9 +42,11 @@ void main() {
       '/v1/events/impressions',
     ]);
     final app = transport.requests.first.body['app']! as Map<String, Object?>;
+    final sdk = transport.requests.first.body['sdk']! as Map<String, Object?>;
     expect(transport.requests.first.body['environment'], 'production');
     expect(app['bundle_id'], 'app.example.publisher');
     expect(app['version'], '3.2.1');
+    expect(sdk['version'], '0.3.2');
     expect(
         transport.requests.first.body.containsKey('installation_id'), isFalse);
     expect(transport.requests.first.body.containsKey('locale'), isFalse);
