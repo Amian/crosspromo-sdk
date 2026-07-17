@@ -96,7 +96,7 @@ public final class CrossPromoCardUIView: UIView {
             .scaledFont(for: .systemFont(ofSize: 16, weight: .semibold))
         appNameLabel.adjustsFontForContentSizeCategory = true
         appNameLabel.textColor = .label
-        appNameLabel.numberOfLines = 1
+        appNameLabel.numberOfLines = 2
         taglineLabel.font = UIFontMetrics(forTextStyle: .subheadline)
             .scaledFont(for: .systemFont(ofSize: 13))
         taglineLabel.adjustsFontForContentSizeCategory = true

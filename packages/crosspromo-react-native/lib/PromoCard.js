@@ -132,7 +132,7 @@ function PromoCard({ placement, style, onError, onLoaded, }) {
                             ], children: (0, jsx_runtime_1.jsx)(react_native_1.Image, { source: { uri: card.iconUrl }, style: [
                                     styles.icon,
                                     darkTheme ? styles.iconDark : styles.iconLight,
-                                ] }) }), (0, jsx_runtime_1.jsxs)(react_native_1.View, { style: styles.copy, children: [(0, jsx_runtime_1.jsx)(react_native_1.Text, { style: [styles.appName, { color: palette.appName }], numberOfLines: 1, children: card.appName }), (0, jsx_runtime_1.jsx)(react_native_1.Text, { style: [styles.tagline, { color: palette.tagline }], numberOfLines: 2, children: card.tagline }), (0, jsx_runtime_1.jsxs)(react_native_1.View, { style: styles.disclosureRow, children: [(0, jsx_runtime_1.jsx)(react_native_1.Animated.View, { style: [styles.adChip, { backgroundColor: chipBackground }], children: (0, jsx_runtime_1.jsx)(react_native_1.Text, { style: [styles.adChipText, { color: palette.chipText }], children: "AD" }) }), (0, jsx_runtime_1.jsx)(react_native_1.Text, { style: [styles.disclosure, { color: palette.disclosure }], numberOfLines: 1, children: "Indie pick" })] })] }), (0, jsx_runtime_1.jsx)(react_native_1.Animated.View, { style: [
+                                ] }) }), (0, jsx_runtime_1.jsxs)(react_native_1.View, { style: styles.copy, children: [(0, jsx_runtime_1.jsx)(react_native_1.Text, { style: [styles.appName, { color: palette.appName }], numberOfLines: 2, children: card.appName }), (0, jsx_runtime_1.jsx)(react_native_1.Text, { style: [styles.tagline, { color: palette.tagline }], numberOfLines: 2, children: card.tagline }), (0, jsx_runtime_1.jsxs)(react_native_1.View, { style: styles.disclosureRow, children: [(0, jsx_runtime_1.jsx)(react_native_1.Animated.View, { style: [styles.adChip, { backgroundColor: chipBackground }], children: (0, jsx_runtime_1.jsx)(react_native_1.Text, { style: [styles.adChipText, { color: palette.chipText }], children: "AD" }) }), (0, jsx_runtime_1.jsx)(react_native_1.Text, { style: [styles.disclosure, { color: palette.disclosure }], numberOfLines: 1, children: "Indie pick" })] })] }), (0, jsx_runtime_1.jsx)(react_native_1.Animated.View, { style: [
                                 styles.cta,
                                 { backgroundColor: ctaBackground },
                                 react_native_1.Platform.OS === 'ios' && {
@@ -227,7 +227,7 @@ const styles = react_native_1.StyleSheet.create({
     iconLight: { borderColor: 'rgba(0,0,0,0.08)' },
     iconDark: { borderColor: 'rgba(255,255,255,0.16)' },
     copy: { flex: 1, marginHorizontal: 12 },
-    appName: { fontSize: 16, fontWeight: '600' },
+    appName: { fontSize: 16, fontWeight: '600', lineHeight: 20 },
     tagline: { fontSize: 13, marginTop: 2 },
     disclosureRow: {
         flexDirection: 'row',

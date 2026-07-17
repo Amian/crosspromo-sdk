@@ -164,11 +164,12 @@ class _PromoCardState extends State<PromoCard> {
                           children: [
                             Text(
                               card.appName,
-                              maxLines: 1,
+                              maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                               style: theme.textTheme.titleMedium?.copyWith(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
+                                height: 1.25,
                               ),
                             ),
                             const SizedBox(height: 2),

@@ -182,7 +182,7 @@ export function PromoCard({
             <View style={styles.copy}>
               <Text
                 style={[styles.appName, { color: palette.appName }]}
-                numberOfLines={1}
+                numberOfLines={2}
               >
                 {card.appName}
               </Text>
@@ -343,7 +343,7 @@ const styles = StyleSheet.create({
   iconLight: { borderColor: 'rgba(0,0,0,0.08)' },
   iconDark: { borderColor: 'rgba(255,255,255,0.16)' },
   copy: { flex: 1, marginHorizontal: 12 },
-  appName: { fontSize: 16, fontWeight: '600' },
+  appName: { fontSize: 16, fontWeight: '600', lineHeight: 20 },
   tagline: { fontSize: 13, marginTop: 2 },
   disclosureRow: {
     flexDirection: 'row',
