@@ -1,5 +1,6 @@
 import { CrossPromoPlacement } from './types';
 import type { CrossPromoConfiguration, CrossPromoPlatform, CrossPromoSessionStatus, Fetch, PromoCardData } from './types';
+export declare const resolveEnvironment: (environment: CrossPromoConfiguration["environment"], isDevelopment?: boolean) => "production" | "sandbox";
 export declare class CrossPromoError extends Error {
     readonly statusCode?: number | undefined;
     constructor(message: string, statusCode?: number | undefined);

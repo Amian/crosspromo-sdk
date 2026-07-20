@@ -23,6 +23,12 @@ interface CardWire {
   expires_at: string;
 }
 
+export const resolveEnvironment = (
+  environment: CrossPromoConfiguration['environment'],
+  isDevelopment = typeof __DEV__ !== 'undefined' && __DEV__,
+): 'production' | 'sandbox' =>
+  environment ?? (isDevelopment ? 'sandbox' : 'production');
+
 export class CrossPromoError extends Error {
   constructor(
     message: string,
@@ -139,15 +145,14 @@ export class CrossPromoClient {
       cloud_project_number?: number;
     }>('/v1/sdk/sessions/challenge', {
       app_key: this.configuration.appKey,
-      environment:
-        this.configuration.environment === 'sandbox' ? 'sandbox' : 'production',
+      environment: resolveEnvironment(this.configuration.environment),
       app: {
         platform: app.platform,
         bundle_id: app.bundle_id,
         version: app.version,
         build_number: app.build_number,
       },
-      sdk: { name: 'crosspromo-react-native', version: '0.3.3' },
+      sdk: { name: 'crosspromo-react-native', version: '0.3.4' },
     });
     const evidence = await this.platform.generateEvidence({
       challenge_base64: challenge.challenge_base64,

@@ -102,7 +102,7 @@ class CrossPromoClient {
       'app_key': configuration.appKey,
       'environment': configuration.environment.name,
       'app': app.toJson(),
-      'sdk': {'name': 'crosspromo-flutter', 'version': '0.3.3'},
+      'sdk': {'name': 'crosspromo-flutter', 'version': '0.3.4'},
     });
     final evidence = await _platform.generateEvidence(
       challengeBase64: challenge['challenge_base64']! as String,
@@ -173,7 +173,7 @@ abstract final class CrossPromo {
 
   static void configure({
     required String appKey,
-    CrossPromoEnvironment environment = CrossPromoEnvironment.production,
+    CrossPromoEnvironment? environment,
     Uri? baseUri,
   }) {
     _client = CrossPromoClient(

@@ -5,9 +5,28 @@ import 'package:crosspromo_sdk/src/configuration.dart';
 import 'package:crosspromo_sdk/src/models.dart';
 import 'package:crosspromo_sdk/src/platform_bridge.dart';
 import 'package:crosspromo_sdk/src/transport.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('automatically selects the build environment', () {
+    final configuration = CrossPromoConfiguration(appKey: 'cp_live_example');
+    expect(
+      configuration.environment,
+      kDebugMode
+          ? CrossPromoEnvironment.sandbox
+          : CrossPromoEnvironment.production,
+    );
+  });
+
+  test('allows an explicit production override', () {
+    final configuration = CrossPromoConfiguration(
+      appKey: 'cp_live_example',
+      environment: CrossPromoEnvironment.production,
+    );
+    expect(configuration.environment, CrossPromoEnvironment.production);
+  });
+
   test('sends app identity and only reports qualified impressions', () async {
     final transport = FakeTransport();
     final client = CrossPromoClient(
@@ -43,10 +62,13 @@ void main() {
     ]);
     final app = transport.requests.first.body['app']! as Map<String, Object?>;
     final sdk = transport.requests.first.body['sdk']! as Map<String, Object?>;
-    expect(transport.requests.first.body['environment'], 'production');
+    expect(
+      transport.requests.first.body['environment'],
+      kDebugMode ? 'sandbox' : 'production',
+    );
     expect(app['bundle_id'], 'app.example.publisher');
     expect(app['version'], '3.2.1');
-    expect(sdk['version'], '0.3.3');
+    expect(sdk['version'], '0.3.4');
     expect(
         transport.requests.first.body.containsKey('installation_id'), isFalse);
     expect(transport.requests.first.body.containsKey('locale'), isFalse);

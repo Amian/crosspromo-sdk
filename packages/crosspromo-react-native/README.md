@@ -46,10 +46,11 @@ The minimum supported version is iOS 16. CrossPromo does not require an App Atte
 capability or an in-app purchase product. The native iOS portion of the module obtains
 the Apple-signed App Transaction automatically.
 
-For development, use the same dashboard key and configure
-`{ environment: 'sandbox', appKey: 'cp_live_your_public_app_key' }`. Sandbox events
-never count. Production counting requires a valid production App Transaction and a
-currently public App Store listing. The API, not JavaScript, makes that decision.
+When `environment` is omitted, development builds automatically use sandbox and release
+builds automatically use production. Sandbox events never count. Production counting
+requires a valid production App Transaction and a currently public App Store listing.
+The API, not JavaScript, makes that decision. Explicit overrides remain available for
+unusual testing, but do not ship an explicit sandbox override.
 
 ## Custom UI
 

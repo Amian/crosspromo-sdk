@@ -45,16 +45,18 @@ open links, or report impressions. Production integrations should use `CrossProm
 
 ## Test before release
 
-Use your dashboard app key with the sandbox environment:
+Omit the environment argument. Debug builds automatically use sandbox and release builds
+automatically use production:
 
 ```swift
 try CrossPromo.configure(
-    appKey: "cp_live_your_public_app_key",
-    environment: .sandbox
+    appKey: "cp_live_your_public_app_key"
 )
 ```
 
-Sandbox activity is visibly marked in the dashboard and never counts.
+Sandbox activity is visibly marked in the dashboard and never counts. Explicit
+environment overrides remain available for unusual testing, but do not ship an explicit
+sandbox override.
 Production counting is decided by the API after validating the Apple-signed App
 Transaction, the registered app identity and version, and the live App Store listing.
 A missing or sandbox App Transaction cannot count. CrossPromo does not require

@@ -7,6 +7,16 @@ import Testing
 
 @Suite("CrossPromo client")
 struct CrossPromoClientTests {
+    @Test("automatically selects the build environment")
+    func automaticBuildEnvironment() throws {
+        let configuration = try CrossPromoConfiguration(appKey: "cp_live_example")
+        #if DEBUG
+        #expect(configuration.environment.requestValue == "sandbox")
+        #else
+        #expect(configuration.environment.requestValue == "production")
+        #endif
+    }
+
     @Test("collects app metadata and reports a qualified impression")
     func sessionCardAndImpression() async throws {
         let transport = MockTransport()
@@ -40,7 +50,7 @@ struct CrossPromoClientTests {
         let sdk = try #require(challengeJSON["sdk"] as? [String: Any])
         #expect(app["bundle_id"] as? String == "app.example.publisher")
         #expect(app["version"] as? String == "3.2.1")
-        #expect(sdk["version"] as? String == "0.3.3")
+        #expect(sdk["version"] as? String == "0.3.4")
         #expect(challengeJSON["installation_id"] == nil)
         #expect(challengeJSON["locale"] == nil)
         #expect(challengeJSON["integrity"] == nil)

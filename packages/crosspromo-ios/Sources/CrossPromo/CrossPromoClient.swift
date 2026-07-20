@@ -153,12 +153,12 @@ public actor CrossPromoClient {
 
 @MainActor
 public enum CrossPromo {
-    public nonisolated static let sdkVersion = "0.3.3"
+    public nonisolated static let sdkVersion = "0.3.4"
     private static var configuredClient: CrossPromoClient?
 
     public static func configure(
         appKey: String,
-        environment: CrossPromoConfiguration.Environment = .production
+        environment: CrossPromoConfiguration.Environment = .automatic
     ) throws {
         let configuration = try CrossPromoConfiguration(appKey: appKey, environment: environment)
         configuredClient = CrossPromoClient(configuration: configuration)

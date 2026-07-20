@@ -1,7 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.CrossPromoClient = exports.CrossPromoError = void 0;
+exports.CrossPromoClient = exports.CrossPromoError = exports.resolveEnvironment = void 0;
 const types_1 = require("./types");
+const resolveEnvironment = (environment, isDevelopment = typeof __DEV__ !== 'undefined' && __DEV__) => environment ?? (isDevelopment ? 'sandbox' : 'production');
+exports.resolveEnvironment = resolveEnvironment;
 class CrossPromoError extends Error {
     constructor(message, statusCode) {
         super(message);
@@ -73,14 +75,14 @@ class CrossPromoClient {
         const app = await this.platform.getAppContext();
         const challenge = await this.post('/v1/sdk/sessions/challenge', {
             app_key: this.configuration.appKey,
-            environment: this.configuration.environment === 'sandbox' ? 'sandbox' : 'production',
+            environment: (0, exports.resolveEnvironment)(this.configuration.environment),
             app: {
                 platform: app.platform,
                 bundle_id: app.bundle_id,
                 version: app.version,
                 build_number: app.build_number,
             },
-            sdk: { name: 'crosspromo-react-native', version: '0.3.3' },
+            sdk: { name: 'crosspromo-react-native', version: '0.3.4' },
         });
         const evidence = await this.platform.generateEvidence({
             challenge_base64: challenge.challenge_base64,

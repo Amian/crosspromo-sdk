@@ -9,6 +9,7 @@ export enum CrossPromoPlacement {
 
 export interface CrossPromoConfiguration {
   appKey: string;
+  /** Defaults to sandbox in development builds and production in release builds. */
   environment?: CrossPromoEnvironment;
   /** Intended for local contract tests only. */
   baseUrl?: string;

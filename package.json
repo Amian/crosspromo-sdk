@@ -1,6 +1,6 @@
 {
   "name": "@crosspromo/react-native",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "description": "Privacy-first CrossPromo recommendation cards for React Native on iOS",
   "main": "packages/crosspromo-react-native/lib/index.js",
   "types": "packages/crosspromo-react-native/lib/index.d.ts",

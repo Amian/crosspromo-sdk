@@ -2,25 +2,43 @@ import Foundation
 
 public struct CrossPromoConfiguration: Sendable {
     public enum Environment: Sendable {
+        case automatic
         case production
         case sandbox
         case custom(URL)
 
-        var baseURL: URL {
+        var resolved: Environment {
             switch self {
+            case .automatic:
+                #if DEBUG
+                return .sandbox
+                #else
+                return .production
+                #endif
+            case .production, .sandbox, .custom:
+                return self
+            }
+        }
+
+        var baseURL: URL {
+            switch resolved {
             case .production, .sandbox:
                 URL(string: "https://backend-j5mh.onrender.com")!
             case let .custom(url):
                 url
+            case .automatic:
+                preconditionFailure("Automatic environment must resolve before use")
             }
         }
 
         var requestValue: String {
-            switch self {
+            switch resolved {
             case .sandbox:
                 "sandbox"
             case .production, .custom:
                 "production"
+            case .automatic:
+                preconditionFailure("Automatic environment must resolve before use")
             }
         }
     }
@@ -31,7 +49,7 @@ public struct CrossPromoConfiguration: Sendable {
 
     public init(
         appKey: String,
-        environment: Environment = .production,
+        environment: Environment = .automatic,
         requestTimeout: TimeInterval = 10
     ) throws {
         guard appKey.hasPrefix("cp_live_") || appKey.hasPrefix("cpn_live_") else {

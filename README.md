@@ -35,8 +35,9 @@ Please work autonomously and make the integration changes for me:
 2. Read the CrossPromo root README and the README for the matching package.
 3. Install the SDK directly from the GitHub repository using the documented method.
 4. Configure CrossPromo once at app startup. Ask me to copy my app key from the
-   CrossPromo dashboard if it is not already present. Use that same key with the
-   sandbox environment while developing.
+   CrossPromo dashboard if it is not already present. Omit the environment argument:
+   the SDK automatically uses sandbox in debug builds and production in release builds.
+   Do not hard-code sandbox in code that will ship.
 5. Add one PromoCard to an existing, sensible screen—prefer a success/result screen,
    then settings or an empty state. Do not redesign the rest of the screen.
 6. Use the SDK's typed placement option that best fits the screen: post-scan, result,
@@ -66,8 +67,7 @@ Configure once when the app starts:
 import CrossPromo
 
 try CrossPromo.configure(
-    appKey: "cp_live_YOUR_KEY_FROM_DASHBOARD",
-    environment: .sandbox
+    appKey: "cp_live_YOUR_KEY_FROM_DASHBOARD"
 )
 ```
 
@@ -98,7 +98,6 @@ Configure before `runApp`:
 ```dart
 CrossPromo.configure(
   appKey: 'cp_live_YOUR_KEY_FROM_DASHBOARD',
-  environment: CrossPromoEnvironment.sandbox,
 );
 ```
 
@@ -130,7 +129,6 @@ import {
 
 CrossPromo.configure({
   appKey: 'cp_live_YOUR_KEY_FROM_DASHBOARD',
-  environment: 'sandbox',
 });
 ```
 
@@ -146,14 +144,15 @@ Placements are typed options, so a misspelling is caught before the app runs.
 
 ## Release setup
 
-Before changing the environment from sandbox to production:
+No manual environment switch is required. When the environment argument is omitted,
+the SDK uses sandbox in debug builds and production in release builds. Before release:
 
 - the app must target iOS 16 or later;
 - the SDK must be included in a version released through the public App Store; and
 - the dashboard registration must match the app's bundle ID and numeric Apple app ID.
 
-For the App Store build, use `environment: .production` / the equivalent production
-option, or simply omit `environment` because production is the default.
+Keep the environment argument omitted for the App Store build. Explicit overrides remain
+available for unusual testing, but do not ship an explicit sandbox override.
 
 CrossPromo does not require an App Attest capability or an in-app purchase product.
 The SDK reads the app identifier, version, build number, and Apple-signed App

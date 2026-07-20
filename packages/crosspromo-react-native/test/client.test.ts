@@ -1,13 +1,20 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { CrossPromoClient } from '../src/client';
+import { CrossPromoClient, resolveEnvironment } from '../src/client';
 import { CrossPromoPlacement } from '../src/types';
 import type {
   CrossPromoPlatform,
   Fetch,
   IntegrityEvidence,
 } from '../src/types';
+
+test('automatically selects the build environment and respects overrides', () => {
+  assert.equal(resolveEnvironment(undefined, true), 'sandbox');
+  assert.equal(resolveEnvironment(undefined, false), 'production');
+  assert.equal(resolveEnvironment('sandbox', false), 'sandbox');
+  assert.equal(resolveEnvironment('production', true), 'production');
+});
 
 test('sends app identity and only reports qualified impressions', async () => {
   const requests: Array<{ path: string; body: Record<string, unknown>; headers: HeadersInit }> = [];
@@ -88,7 +95,7 @@ test('sends app identity and only reports qualified impressions', async () => {
   });
   assert.deepEqual(challenge.sdk, {
     name: 'crosspromo-react-native',
-    version: '0.3.3',
+    version: '0.3.4',
   });
   assert.equal(challenge.installation_id, undefined);
   assert.equal(challenge.locale, undefined);

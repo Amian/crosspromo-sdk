@@ -2,8 +2,9 @@
 
 CrossPromo currently supports Flutter apps on iOS only.
 
-Version `0.3.3` adds deterministic local card previews while retaining the
-icon-derived colors and responsive sizing introduced in `0.3.2`.
+Version `0.3.4` automatically uses sandbox for debug builds and production for release
+builds while retaining the icon-derived colors and responsive sizing introduced in
+`0.3.2`.
 
 ## Install
 
@@ -51,10 +52,11 @@ The minimum supported version is iOS 16. CrossPromo does not require an App Atte
 capability or an in-app purchase product. The native iOS portion of the plugin obtains
 the Apple-signed App Transaction automatically.
 
-For development, use the same dashboard key with
-`CrossPromoEnvironment.sandbox`. Sandbox events never count. Production counting
-requires a valid production App Transaction and a currently public App Store listing;
-the API makes that decision, not the widget.
+When the environment argument is omitted, debug builds automatically use sandbox and
+release builds automatically use production. Sandbox events never count. Production
+counting requires a valid production App Transaction and a currently public App Store
+listing; the API makes that decision, not the widget. Explicit overrides remain
+available for unusual testing, but do not ship an explicit sandbox override.
 
 ## Custom UI
 
