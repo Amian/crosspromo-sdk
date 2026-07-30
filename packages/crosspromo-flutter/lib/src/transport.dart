@@ -53,24 +53,32 @@ class IoCrossPromoTransport implements CrossPromoTransport {
   }) async {
     final client = _sharedClient();
     final request = await client.postUrl(uri).timeout(timeout);
-    request.headers.contentType = ContentType.json;
-    request.headers.set(HttpHeaders.acceptHeader, 'application/json');
-    if (bearerToken != null) {
-      request.headers.set(
-        HttpHeaders.authorizationHeader,
-        'Bearer $bearerToken',
+    try {
+      request.headers.contentType = ContentType.json;
+      request.headers.set(HttpHeaders.acceptHeader, 'application/json');
+      if (bearerToken != null) {
+        request.headers.set(
+          HttpHeaders.authorizationHeader,
+          'Bearer $bearerToken',
+        );
+      }
+      if (idempotencyKey != null) {
+        request.headers.set('Idempotency-Key', idempotencyKey);
+      }
+      request.write(jsonEncode(body));
+      final response = await request.close().timeout(timeout);
+      final responseBody =
+          await utf8.decoder.bind(response).join().timeout(timeout);
+      return CrossPromoHttpResponse(
+        statusCode: response.statusCode,
+        body: responseBody,
       );
+    } on Object {
+      // A `timeout` on its own does not tear down the underlying request, and the
+      // client is now shared rather than force-closed per call — so a stalled
+      // request would keep occupying a pooled connection. Abort releases it.
+      request.abort();
+      rethrow;
     }
-    if (idempotencyKey != null) {
-      request.headers.set('Idempotency-Key', idempotencyKey);
-    }
-    request.write(jsonEncode(body));
-    final response = await request.close().timeout(timeout);
-    final responseBody =
-        await utf8.decoder.bind(response).join().timeout(timeout);
-    return CrossPromoHttpResponse(
-      statusCode: response.statusCode,
-      body: responseBody,
-    );
   }
 }
