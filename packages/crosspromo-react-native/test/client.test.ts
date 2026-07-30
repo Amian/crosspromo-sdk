@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { CrossPromoClient, resolveEnvironment } from '../src/client';
+import { CrossPromoClient, CrossPromoError, resolveEnvironment } from '../src/client';
 import { CrossPromoPlacement } from '../src/types';
 import type {
+  CrossPromoConfiguration,
   CrossPromoPlatform,
   Fetch,
   IntegrityEvidence,
@@ -107,6 +108,194 @@ test('sends app identity and only reports qualified impressions', async () => {
   const headers = requests[3]!.headers as Record<string, string>;
   assert.ok(headers['Idempotency-Key']);
 });
+
+test('a prefetched card is served without any further network call', async () => {
+  const transport = new FakeTransport();
+  const client = newClient(transport);
+
+  await client.prefetch(CrossPromoPlacement.PostScan);
+  assert.deepEqual(
+    transport.requests.map((r) => r.path),
+    ['/v1/sdk/sessions/challenge', '/v1/sdk/sessions/verify', '/v1/cards'],
+  );
+
+  const card = await client.fetchCard(CrossPromoPlacement.PostScan);
+  assert.equal(card?.cardId, 'c_1');
+  // Showing a prefetched card must not touch the network.
+  assert.equal(transport.requests.length, 3);
+});
+
+test('a prefetched card is single use, because its impression token is', async () => {
+  const transport = new FakeTransport();
+  const client = newClient(transport);
+
+  await client.prefetch(CrossPromoPlacement.PostScan);
+  const first = await client.fetchCard(CrossPromoPlacement.PostScan);
+  const second = await client.fetchCard(CrossPromoPlacement.PostScan);
+
+  assert.equal(first?.cardId, 'c_1');
+  // The second card must be a fresh one.
+  assert.equal(second?.cardId, 'c_2');
+  assert.notEqual(first?.impressionToken, second?.impressionToken);
+  assert.equal(transport.cardRequestCount, 2);
+});
+
+test('a prefetched card for another placement is not reused', async () => {
+  const transport = new FakeTransport();
+  const client = newClient(transport);
+
+  await client.prefetch(CrossPromoPlacement.PostScan);
+  const card = await client.fetchCard(CrossPromoPlacement.Settings);
+
+  assert.equal(card?.cardId, 'c_2');
+  assert.equal(transport.cardRequestCount, 2);
+  assert.equal(transport.requests[transport.requests.length - 1]?.body.placement, 'settings');
+});
+
+test('a prefetched card too close to expiry is discarded, not shown', async () => {
+  // Below the client's freshness margin: it could expire before the viewability
+  // window it is about to be measured against completes.
+  const transport = new FakeTransport({ cardLifetimeMs: 5_000 });
+  const client = newClient(transport);
+
+  await client.prefetch(CrossPromoPlacement.PostScan);
+  assert.equal(transport.cardRequestCount, 1);
+
+  const card = await client.fetchCard(CrossPromoPlacement.PostScan);
+  // The stale card is refetched.
+  assert.equal(transport.cardRequestCount, 2);
+  assert.equal(card?.cardId, 'c_2');
+});
+
+test('a card requested while a prefetch is in flight reuses that request', async () => {
+  let resolveGate!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    resolveGate = resolve;
+  });
+  const transport = new FakeTransport({ cardGate: gate });
+  const client = newClient(transport);
+
+  const warming = client.prefetch(CrossPromoPlacement.PostScan);
+  const pending = client.fetchCard(CrossPromoPlacement.PostScan);
+  resolveGate();
+  const card = await pending;
+  await warming;
+
+  assert.equal(card?.cardId, 'c_1');
+  // A mount during prefetch must not start a second card request.
+  assert.equal(transport.cardRequestCount, 1);
+});
+
+test('a failed prefetch stays silent and the card is fetched on demand', async () => {
+  const transport = new FakeTransport({ failCards: true });
+  const client = newClient(transport);
+
+  // Must not throw: nothing was on screen when this ran.
+  await client.prefetch(CrossPromoPlacement.PostScan);
+
+  await assert.rejects(
+    client.fetchCard(CrossPromoPlacement.PostScan),
+    CrossPromoError,
+  );
+  assert.equal(transport.cardRequestCount, 2);
+});
+
+function newClient(transport: FakeTransport): CrossPromoClient {
+  const configuration: CrossPromoConfiguration = {
+    appKey: 'cp_live_example',
+    baseUrl: 'https://example.test',
+  };
+  return new CrossPromoClient(configuration, new FakePlatform(), transport.fetch);
+}
+
+interface RequestRecord {
+  path: string;
+  body: Record<string, unknown>;
+}
+
+interface FakeTransportOptions {
+  /** How long each served card stays valid. Defaults to the far future. */
+  cardLifetimeMs?: number;
+  /**
+   * When set, every `/v1/cards` response waits on this before completing, so a
+   * test can observe behaviour while a card request is still in flight.
+   */
+  cardGate?: Promise<void>;
+  /** Makes `/v1/cards` fail, to prove a failed prefetch stays invisible. */
+  failCards?: boolean;
+}
+
+class FakeTransport {
+  readonly requests: RequestRecord[] = [];
+  private cardsServed = 0;
+
+  constructor(private readonly options: FakeTransportOptions = {}) {}
+
+  get cardRequestCount(): number {
+    return this.requests.filter((r) => r.path === '/v1/cards').length;
+  }
+
+  fetch: Fetch = async (url, init) => {
+    const path = new URL(url).pathname;
+    const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
+    this.requests.push({ path, body });
+
+    if (path === '/v1/cards') {
+      if (this.options.cardGate) await this.options.cardGate;
+      if (this.options.failCards) {
+        return { ok: false, status: 500, text: async () => '{}' };
+      }
+    }
+
+    switch (path) {
+      case '/v1/sdk/sessions/challenge':
+        return jsonResponse({
+          session_id: 's_1',
+          challenge_base64: 'aGVsbG8=',
+          integrity_mode: 'app_transaction',
+        });
+      case '/v1/sdk/sessions/verify':
+        return jsonResponse({
+          access_token: 'token',
+          publisher_app_id: 'app_1',
+          counts_enabled: true,
+          reason: null,
+          expires_at: '2099-01-01T00:00:00Z',
+        });
+      case '/v1/cards': {
+        this.cardsServed += 1;
+        const expiresAt =
+          this.options.cardLifetimeMs === undefined
+            ? '2099-01-01T00:00:00Z'
+            : new Date(Date.now() + this.options.cardLifetimeMs).toISOString();
+        return jsonResponse({
+          card: {
+            card_id: `c_${this.cardsServed}`,
+            app_name: 'Rock Finder',
+            icon_url: 'https://cdn.example/icon.png',
+            tagline: 'Find every rock',
+            cta: 'Get',
+            click_url: 'https://go.example/c/1',
+            impression_token: `imp_${this.cardsServed}`,
+            expires_at: expiresAt,
+          },
+        });
+      }
+      case '/v1/events/impressions':
+        return jsonResponse(undefined);
+      default:
+        throw new Error(`Unexpected path ${path}`);
+    }
+  };
+}
+
+function jsonResponse(body: unknown): { ok: true; status: 200; text: () => Promise<string> } {
+  return {
+    ok: true,
+    status: 200,
+    text: async () => (body === undefined ? '' : JSON.stringify(body)),
+  };
+}
 
 class FakePlatform implements CrossPromoPlatform {
   async getAppContext() {

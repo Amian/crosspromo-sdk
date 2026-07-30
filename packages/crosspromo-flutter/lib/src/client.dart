@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'configuration.dart';
@@ -26,18 +27,106 @@ class CrossPromoClient {
             transport ?? IoCrossPromoTransport(configuration.requestTimeout),
         _platform = platform ?? MethodChannelCrossPromoPlatform();
 
+  /// A session this close to expiring is renewed before it is handed out, so a
+  /// request can never be signed with a token that dies mid-flight.
+  static const _sessionMinimumRemaining = Duration(seconds: 30);
+
+  /// A still-valid session with less than this left is renewed in the background,
+  /// so an ad request practically never waits for the three-call handshake.
+  static const _sessionRefreshMargin = Duration(minutes: 2);
+
+  /// A prefetched card has to outlive the viewability window it is about to be
+  /// measured against, so one that is nearly expired is discarded rather than
+  /// shown and then failing to record.
+  static const _cardMinimumRemaining = Duration(seconds: 30);
+
   final CrossPromoConfiguration configuration;
   final CrossPromoTransport _transport;
   final CrossPromoPlatform _platform;
   _Session? _session;
   Future<_Session>? _sessionRequest;
 
+  /// Cards fetched ahead of being needed, keyed by placement.
+  ///
+  /// Cards are single use: each carries its own impression token, and the backend
+  /// treats a repeated token as a replay. Handing one card to two placements would
+  /// therefore silently drop the second impression, so taking a prefetched card
+  /// removes it from here.
+  final Map<String, PromoCardData> _prefetched = {};
+  final Map<String, Future<void>> _prefetchRequests = {};
+
   Future<CrossPromoSessionStatus> sessionStatus() async =>
       (await _validSession()).status;
+
+  /// Does the slow part of showing an ad before there is anywhere to show it: the
+  /// session handshake and one card fetch. Call it at app start, or as soon as you
+  /// know a placement is coming, and the matching [fetchCard] returns immediately.
+  ///
+  /// Best effort by design — failures are swallowed, because a prefetch that did
+  /// not work must not surface as an error at a point where the app was not even
+  /// showing an ad. The card is simply fetched on demand instead.
+  ///
+  /// Safe to call repeatedly: concurrent calls for one placement share a single
+  /// fetch, and a placement that already holds a fresh card does nothing.
+  Future<void> prefetch({
+    required CrossPromoPlacement placement,
+  }) {
+    final key = placement.value;
+    final inflight = _prefetchRequests[key];
+    if (inflight != null) return inflight;
+    if (_prefetched[key] != null) return Future<void>.value();
+    final request = _runPrefetch(key, placement);
+    _prefetchRequests[key] = request;
+    return request;
+  }
+
+  /// Warms only the session handshake, for apps that want the credential ready
+  /// without holding a card that could go stale.
+  Future<void> warmUp() async {
+    try {
+      await _validSession();
+    } on Object {
+      // Best effort, exactly like prefetch.
+    }
+  }
+
+  Future<void> _runPrefetch(String key, CrossPromoPlacement placement) async {
+    try {
+      final card = await _requestCard(placement);
+      if (card != null) _prefetched[key] = card;
+    } on Object {
+      // Swallowed: see prefetch's contract.
+    } finally {
+      _prefetchRequests.remove(key);
+    }
+  }
 
   Future<PromoCardData?> fetchCard({
     required CrossPromoPlacement placement,
   }) async {
+    final key = placement.value;
+    final ready = _takePrefetched(key);
+    if (ready != null) return ready;
+
+    // A prefetch already on the wire: wait for it rather than starting a second
+    // identical request and wasting the impression the first one is holding.
+    final inflight = _prefetchRequests[key];
+    if (inflight != null) {
+      await inflight;
+      final arrived = _takePrefetched(key);
+      if (arrived != null) return arrived;
+    }
+    return _requestCard(placement);
+  }
+
+  PromoCardData? _takePrefetched(String key) {
+    final held = _prefetched.remove(key);
+    if (held == null) return null;
+    final remaining = held.expiresAt.difference(DateTime.now());
+    return remaining > _cardMinimumRemaining ? held : null;
+  }
+
+  Future<PromoCardData?> _requestCard(CrossPromoPlacement placement) async {
     final session = await _validSession();
     final json = await _post(
         '/v1/cards',
@@ -78,11 +167,22 @@ class CrossPromoClient {
 
   Future<_Session> _validSession() async {
     final existing = _session;
-    if (existing != null &&
-        existing.status.expiresAt.difference(DateTime.now()) >
-            const Duration(seconds: 30)) {
-      return existing;
+    if (existing != null) {
+      final remaining = existing.status.expiresAt.difference(DateTime.now());
+      if (remaining > _sessionMinimumRemaining) {
+        if (remaining < _sessionRefreshMargin) {
+          // Still usable, but close enough to expiry that the next ad would have
+          // paid for a fresh handshake. Renew behind this request and answer it
+          // with the token we already hold.
+          _renewSessionInBackground();
+        }
+        return existing;
+      }
     }
+    return _startSession();
+  }
+
+  Future<_Session> _startSession() async {
     final inflight = _sessionRequest;
     if (inflight != null) return inflight;
     final request = _createSession();
@@ -94,6 +194,11 @@ class CrossPromoClient {
     } finally {
       _sessionRequest = null;
     }
+  }
+
+  void _renewSessionInBackground() {
+    if (_sessionRequest != null) return;
+    unawaited(_startSession().then((_) {}, onError: (Object _) {}));
   }
 
   Future<_Session> _createSession() async {
@@ -171,18 +276,27 @@ class _Session {
 abstract final class CrossPromo {
   static CrossPromoClient? _client;
 
+  /// [prefetchPlacements] warms the session and one card for each placement given,
+  /// in the background, so the first card the app shows appears without a network
+  /// wait. Pass the placements the app actually uses — a prefetched card is held
+  /// until something asks for it, and anything that fails is fetched on demand.
   static void configure({
     required String appKey,
     CrossPromoEnvironment? environment,
     Uri? baseUri,
+    Iterable<CrossPromoPlacement> prefetchPlacements = const [],
   }) {
-    _client = CrossPromoClient(
+    final client = CrossPromoClient(
       CrossPromoConfiguration(
         appKey: appKey,
         environment: environment,
         baseUri: baseUri,
       ),
     );
+    _client = client;
+    for (final placement in prefetchPlacements) {
+      unawaited(client.prefetch(placement: placement));
+    }
   }
 
   static CrossPromoClient get client {

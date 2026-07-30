@@ -84,10 +84,126 @@ struct CrossPromoClientTests {
         try await client.recordImpression(for: card, visibleFraction: 0.49, duration: 4)
         #expect(await transport.requests.count == 3)
     }
+
+    @Test("a prefetched card is served without any further network call")
+    func prefetchServesWithoutNetwork() async throws {
+        let transport = MockTransport()
+        let client = try makeClient(transport)
+
+        await client.prefetch(placement: .postScan)
+        #expect(await transport.requests.map(\.url?.path) == [
+            "/v1/sdk/sessions/challenge",
+            "/v1/sdk/sessions/verify",
+            "/v1/cards",
+        ])
+
+        let card = try #require(await client.fetchCard(placement: .postScan))
+        #expect(card.cardID == "c_1")
+        #expect(await transport.requests.count == 3, "showing a prefetched card must not touch the network")
+    }
+
+    @Test("a prefetched card is single use, because its impression token is")
+    func prefetchedCardIsSingleUse() async throws {
+        let transport = MockTransport()
+        let client = try makeClient(transport)
+
+        await client.prefetch(placement: .postScan)
+        let first = try #require(await client.fetchCard(placement: .postScan))
+        let second = try #require(await client.fetchCard(placement: .postScan))
+
+        #expect(first.cardID == "c_1")
+        #expect(second.cardID == "c_2", "the second card must be a fresh one")
+        #expect(first.impressionToken != second.impressionToken)
+        #expect(await transport.cardRequestCount == 2)
+    }
+
+    @Test("a prefetched card for another placement is not reused")
+    func prefetchIsPerPlacement() async throws {
+        let transport = MockTransport()
+        let client = try makeClient(transport)
+
+        await client.prefetch(placement: .postScan)
+        let card = try #require(await client.fetchCard(placement: .settings))
+
+        #expect(card.cardID == "c_2")
+        #expect(await transport.cardRequestCount == 2)
+    }
+
+    @Test("a prefetched card too close to expiry is discarded, not shown")
+    func stalePrefetchedCardIsRefetched() async throws {
+        // Below the client's freshness margin: it could expire before the viewability
+        // window it is about to be measured against completes.
+        let transport = MockTransport(cardLifetime: 5)
+        let client = try makeClient(transport)
+
+        await client.prefetch(placement: .postScan)
+        #expect(await transport.cardRequestCount == 1)
+
+        let card = try #require(await client.fetchCard(placement: .postScan))
+        #expect(await transport.cardRequestCount == 2, "the stale card is refetched")
+        #expect(card.cardID == "c_2")
+    }
+
+    @Test("simultaneous cards share a single session handshake")
+    func concurrentCardsShareOneHandshake() async throws {
+        let transport = MockTransport()
+        let client = try makeClient(transport)
+
+        // Two placements appearing at once previously raced into two full handshakes,
+        // because nothing tracked the session request already in flight.
+        async let first = client.fetchCard(placement: .postScan)
+        async let second = client.fetchCard(placement: .settings)
+        _ = try await (first, second)
+
+        #expect(await transport.requestCount(for: "/v1/sdk/sessions/challenge") == 1)
+        #expect(await transport.requestCount(for: "/v1/sdk/sessions/verify") == 1)
+        #expect(await transport.cardRequestCount == 2)
+    }
+
+    @Test("concurrent prefetches for one placement share a single fetch")
+    func concurrentPrefetchesShareOneFetch() async throws {
+        let transport = MockTransport()
+        let client = try makeClient(transport)
+
+        await withTaskGroup(of: Void.self) { group in
+            for _ in 0..<3 {
+                group.addTask { await client.prefetch(placement: .postScan) }
+            }
+        }
+
+        #expect(await transport.cardRequestCount == 1)
+        #expect(await transport.requestCount(for: "/v1/sdk/sessions/challenge") == 1)
+    }
+}
+
+private func makeClient(_ transport: MockTransport) throws -> CrossPromoClient {
+    CrossPromoClient(
+        configuration: try CrossPromoConfiguration(
+            appKey: "cp_live_example",
+            environment: .custom(URL(string: "https://example.test")!)
+        ),
+        transport: transport,
+        deviceContext: MockDeviceContext()
+    )
 }
 
 private actor MockTransport: CrossPromoTransport {
+    /// How long each served card stays valid. Nil means the far future.
+    private let cardLifetime: TimeInterval?
     var requests: [URLRequest] = []
+    private var cardsServed = 0
+
+    init(cardLifetime: TimeInterval? = nil) {
+        self.cardLifetime = cardLifetime
+    }
+
+    var cardRequestCount: Int {
+        requests.filter { $0.url?.path == "/v1/cards" }.count
+    }
+
+    func requestCount(for path: String) -> Int {
+        requests.filter { $0.url?.path == path }.count
+    }
 
     func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
         requests.append(request)
@@ -99,7 +215,21 @@ private actor MockTransport: CrossPromoTransport {
         case "/v1/sdk/sessions/verify":
             json = #"{"access_token":"token","publisher_app_id":"app_1","counts_enabled":true,"reason":null,"expires_at":"2099-01-01T00:00:00Z"}"#
         case "/v1/cards":
-            json = #"{"card":{"card_id":"c_1","app_name":"Rock Finder","icon_url":"https://cdn.example/icon.png","tagline":"Find every rock","cta":"Get","click_url":"https://go.example/c/1","impression_token":"imp_1","expires_at":"2099-01-01T00:00:00Z"}}"#
+            cardsServed += 1
+            let expiresAt: String
+            if let cardLifetime {
+                expiresAt = ISO8601DateFormatter().string(
+                    from: Date().addingTimeInterval(cardLifetime)
+                )
+            } else {
+                expiresAt = "2099-01-01T00:00:00Z"
+            }
+            json = """
+            {"card":{"card_id":"c_\(cardsServed)","app_name":"Rock Finder",\
+            "icon_url":"https://cdn.example/icon.png","tagline":"Find every rock",\
+            "cta":"Get","click_url":"https://go.example/c/1",\
+            "impression_token":"imp_\(cardsServed)","expires_at":"\(expiresAt)"}}
+            """
         case "/v1/events/impressions":
             json = ""
         default:

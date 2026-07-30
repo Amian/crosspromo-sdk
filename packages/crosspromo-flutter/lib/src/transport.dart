@@ -21,6 +21,28 @@ class IoCrossPromoTransport implements CrossPromoTransport {
   IoCrossPromoTransport(this.timeout);
 
   final Duration timeout;
+  HttpClient? _client;
+
+  /// One client for the SDK's lifetime, so the TCP and TLS handshake is paid once
+  /// rather than on every call. A cold ad load makes three requests back to back;
+  /// building and force-closing a client per request made each of them open a new
+  /// connection, which on a mobile network cost more than the requests themselves.
+  HttpClient _sharedClient() {
+    final existing = _client;
+    if (existing != null) return existing;
+    final created = HttpClient();
+    created.connectionTimeout = timeout;
+    created.idleTimeout = const Duration(seconds: 30);
+    _client = created;
+    return created;
+  }
+
+  /// Releases the pooled connections. The SDK does not call this during normal
+  /// operation — the client is meant to live as long as the app.
+  void close() {
+    _client?.close();
+    _client = null;
+  }
 
   @override
   Future<CrossPromoHttpResponse> post(
@@ -29,30 +51,26 @@ class IoCrossPromoTransport implements CrossPromoTransport {
     String? bearerToken,
     String? idempotencyKey,
   }) async {
-    final client = HttpClient()..connectionTimeout = timeout;
-    try {
-      final request = await client.postUrl(uri).timeout(timeout);
-      request.headers.contentType = ContentType.json;
-      request.headers.set(HttpHeaders.acceptHeader, 'application/json');
-      if (bearerToken != null) {
-        request.headers.set(
-          HttpHeaders.authorizationHeader,
-          'Bearer $bearerToken',
-        );
-      }
-      if (idempotencyKey != null) {
-        request.headers.set('Idempotency-Key', idempotencyKey);
-      }
-      request.write(jsonEncode(body));
-      final response = await request.close().timeout(timeout);
-      final responseBody =
-          await utf8.decoder.bind(response).join().timeout(timeout);
-      return CrossPromoHttpResponse(
-        statusCode: response.statusCode,
-        body: responseBody,
+    final client = _sharedClient();
+    final request = await client.postUrl(uri).timeout(timeout);
+    request.headers.contentType = ContentType.json;
+    request.headers.set(HttpHeaders.acceptHeader, 'application/json');
+    if (bearerToken != null) {
+      request.headers.set(
+        HttpHeaders.authorizationHeader,
+        'Bearer $bearerToken',
       );
-    } finally {
-      client.close(force: true);
     }
+    if (idempotencyKey != null) {
+      request.headers.set('Idempotency-Key', idempotencyKey);
+    }
+    request.write(jsonEncode(body));
+    final response = await request.close().timeout(timeout);
+    final responseBody =
+        await utf8.decoder.bind(response).join().timeout(timeout);
+    return CrossPromoHttpResponse(
+      statusCode: response.statusCode,
+      body: responseBody,
+    );
   }
 }

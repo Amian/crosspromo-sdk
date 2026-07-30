@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:crosspromo_sdk/src/client.dart';
@@ -80,7 +81,137 @@ void main() {
     expect(transport.requests[2].body['placement'], 'post_scan');
     expect(transport.requests.last.idempotencyKey, isNotNull);
   });
+
+  test('a prefetched card is served without any further network call', () async {
+    final transport = FakeTransport();
+    final client = newClient(transport);
+
+    await client.prefetch(placement: CrossPromoPlacement.postScan);
+    expect(transport.requests.map((r) => r.path), [
+      '/v1/sdk/sessions/challenge',
+      '/v1/sdk/sessions/verify',
+      '/v1/cards',
+    ]);
+
+    final card = await client.fetchCard(
+      placement: CrossPromoPlacement.postScan,
+    );
+    expect(card?.cardId, 'c_1');
+    expect(
+      transport.requests,
+      hasLength(3),
+      reason: 'showing a prefetched card must not touch the network',
+    );
+  });
+
+  test('a prefetched card is single use, because its impression token is',
+      () async {
+    final transport = FakeTransport();
+    final client = newClient(transport);
+
+    await client.prefetch(placement: CrossPromoPlacement.postScan);
+    final first =
+        await client.fetchCard(placement: CrossPromoPlacement.postScan);
+    final second =
+        await client.fetchCard(placement: CrossPromoPlacement.postScan);
+
+    expect(first?.cardId, 'c_1');
+    expect(second?.cardId, 'c_2', reason: 'the second card must be a fresh one');
+    expect(first?.impressionToken, isNot(second?.impressionToken));
+    expect(transport.cardRequestCount, 2);
+  });
+
+  test('a prefetched card for another placement is not reused', () async {
+    final transport = FakeTransport();
+    final client = newClient(transport);
+
+    await client.prefetch(placement: CrossPromoPlacement.postScan);
+    final card = await client.fetchCard(placement: CrossPromoPlacement.settings);
+
+    expect(card?.cardId, 'c_2');
+    expect(transport.cardRequestCount, 2);
+    expect(transport.requests.last.body['placement'], 'settings');
+  });
+
+  test('a prefetched card too close to expiry is discarded, not shown',
+      () async {
+    // Below the client's freshness margin: it could expire before the viewability
+    // window it is about to be measured against completes.
+    final transport = FakeTransport(cardLifetime: const Duration(seconds: 5));
+    final client = newClient(transport);
+
+    await client.prefetch(placement: CrossPromoPlacement.postScan);
+    expect(transport.cardRequestCount, 1);
+
+    final card = await client.fetchCard(
+      placement: CrossPromoPlacement.postScan,
+    );
+    expect(transport.cardRequestCount, 2, reason: 'the stale card is refetched');
+    expect(card?.cardId, 'c_2');
+  });
+
+  test('a card requested while a prefetch is in flight reuses that request',
+      () async {
+    final gate = Completer<void>();
+    final transport = FakeTransport(cardGate: gate.future);
+    final client = newClient(transport);
+
+    final warming = client.prefetch(placement: CrossPromoPlacement.postScan);
+    final pending = client.fetchCard(placement: CrossPromoPlacement.postScan);
+    gate.complete();
+    final card = await pending;
+    await warming;
+
+    expect(card?.cardId, 'c_1');
+    expect(
+      transport.cardRequestCount,
+      1,
+      reason: 'a mount during prefetch must not start a second card request',
+    );
+  });
+
+  test('a failed prefetch stays silent and the card is fetched on demand',
+      () async {
+    final transport = FakeTransport(failCards: true);
+    final client = newClient(transport);
+
+    // Must not throw: nothing was on screen when this ran.
+    await client.prefetch(placement: CrossPromoPlacement.postScan);
+
+    await expectLater(
+      client.fetchCard(placement: CrossPromoPlacement.postScan),
+      throwsA(isA<CrossPromoException>()),
+    );
+    expect(transport.cardRequestCount, 2);
+  });
+
+  test('concurrent prefetches for one placement share a single fetch', () async {
+    final transport = FakeTransport();
+    final client = newClient(transport);
+
+    await Future.wait([
+      client.prefetch(placement: CrossPromoPlacement.postScan),
+      client.prefetch(placement: CrossPromoPlacement.postScan),
+      client.prefetch(placement: CrossPromoPlacement.postScan),
+    ]);
+
+    expect(transport.cardRequestCount, 1);
+    expect(
+      transport.requests.where((r) => r.path == '/v1/sdk/sessions/challenge'),
+      hasLength(1),
+      reason: 'the handshake must not be repeated either',
+    );
+  });
 }
+
+CrossPromoClient newClient(FakeTransport transport) => CrossPromoClient(
+      CrossPromoConfiguration(
+        appKey: 'cp_live_example',
+        baseUri: Uri.parse('https://example.test'),
+      ),
+      transport: transport,
+      platform: FakePlatform(),
+    );
 
 class RequestRecord {
   RequestRecord(this.path, this.body, this.idempotencyKey);
@@ -91,7 +222,23 @@ class RequestRecord {
 }
 
 class FakeTransport implements CrossPromoTransport {
+  FakeTransport({this.cardLifetime, this.cardGate, this.failCards = false});
+
+  /// How long each served card stays valid. Defaults to the far future.
+  final Duration? cardLifetime;
+
+  /// When set, every `/v1/cards` response waits on this before completing, so a
+  /// test can observe behaviour while a card request is still in flight.
+  final Future<void>? cardGate;
+
+  /// Makes `/v1/cards` fail, to prove a failed prefetch stays invisible.
+  final bool failCards;
+
   final requests = <RequestRecord>[];
+  int _cardsServed = 0;
+
+  int get cardRequestCount =>
+      requests.where((r) => r.path == '/v1/cards').length;
 
   @override
   Future<CrossPromoHttpResponse> post(
@@ -101,6 +248,15 @@ class FakeTransport implements CrossPromoTransport {
     String? idempotencyKey,
   }) async {
     requests.add(RequestRecord(uri.path, body, idempotencyKey));
+    if (uri.path == '/v1/cards') {
+      if (cardGate != null) await cardGate;
+      if (failCards) {
+        return const CrossPromoHttpResponse(statusCode: 500, body: '{}');
+      }
+    }
+    final cardExpiresAt = cardLifetime == null
+        ? '2099-01-01T00:00:00Z'
+        : DateTime.now().toUtc().add(cardLifetime!).toIso8601String();
     final response = switch (uri.path) {
       '/v1/sdk/sessions/challenge' => {
           'session_id': 's_1',
@@ -116,14 +272,14 @@ class FakeTransport implements CrossPromoTransport {
         },
       '/v1/cards' => {
           'card': {
-            'card_id': 'c_1',
+            'card_id': 'c_${++_cardsServed}',
             'app_name': 'Rock Finder',
             'icon_url': 'https://cdn.example/icon.png',
             'tagline': 'Find every rock',
             'cta': 'Get',
             'click_url': 'https://go.example/c/1',
-            'impression_token': 'imp_1',
-            'expires_at': '2099-01-01T00:00:00Z',
+            'impression_token': 'imp_$_cardsServed',
+            'expires_at': cardExpiresAt,
           },
         },
       '/v1/events/impressions' => null,

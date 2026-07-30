@@ -14,6 +14,13 @@ export interface CrossPromoConfiguration {
   /** Intended for local contract tests only. */
   baseUrl?: string;
   requestTimeoutMs?: number;
+  /**
+   * Warms the session and one card for each placement given, in the background,
+   * so the first card the app shows appears without a network wait. Pass the
+   * placements the app actually uses — a prefetched card is held until something
+   * asks for it, and anything that fails is fetched on demand.
+   */
+  prefetchPlacements?: CrossPromoPlacement[];
 }
 
 export interface PromoCardData {

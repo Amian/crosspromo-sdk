@@ -40,10 +40,40 @@ export class CrossPromoError extends Error {
 }
 
 export class CrossPromoClient {
+  /**
+   * A session this close to expiring is renewed before it is handed out, so a
+   * request can never be signed with a token that dies mid-flight.
+   */
+  private static readonly sessionMinimumRemainingMs = 30_000;
+
+  /**
+   * A still-valid session with less than this left is renewed in the background,
+   * so an ad request practically never waits for the three-call handshake.
+   */
+  private static readonly sessionRefreshMarginMs = 120_000;
+
+  /**
+   * A prefetched card has to outlive the viewability window it is about to be
+   * measured against, so one that is nearly expired is discarded rather than
+   * shown and then failing to record.
+   */
+  private static readonly cardMinimumRemainingMs = 30_000;
+
   private readonly baseUrl: string;
   private readonly timeoutMs: number;
   private session?: Session;
   private sessionRequest?: Promise<Session>;
+
+  /**
+   * Cards fetched ahead of being needed, keyed by placement.
+   *
+   * Cards are single use: each carries its own impression token, and the backend
+   * treats a repeated token as a replay. Handing one card to two placements would
+   * therefore silently drop the second impression, so taking a prefetched card
+   * removes it from here.
+   */
+  private readonly prefetched = new Map<string, PromoCardData>();
+  private readonly prefetchRequests = new Map<string, Promise<void>>();
 
   constructor(
     configuration: CrossPromoConfiguration,
@@ -75,6 +105,55 @@ export class CrossPromoClient {
     return (await this.validSession()).status;
   }
 
+  /**
+   * Does the slow part of showing an ad before there is anywhere to show it: the
+   * session handshake and one card fetch. Call it at app start, or as soon as you
+   * know a placement is coming, and the matching {@link fetchCard} returns
+   * immediately.
+   *
+   * Best effort by design — failures are swallowed, because a prefetch that did
+   * not work must not surface as an error at a point where the app was not even
+   * showing an ad. The card is simply fetched on demand instead.
+   *
+   * Safe to call repeatedly: concurrent calls for one placement share a single
+   * fetch, and a placement that already holds a fresh card does nothing.
+   */
+  prefetch(placement: CrossPromoPlacement): Promise<void> {
+    const key = placement;
+    const inflight = this.prefetchRequests.get(key);
+    if (inflight) return inflight;
+    if (this.prefetched.has(key)) return Promise.resolve();
+    const request = this.runPrefetch(key, placement);
+    this.prefetchRequests.set(key, request);
+    return request;
+  }
+
+  /**
+   * Warms only the session handshake, for apps that want the credential ready
+   * without holding a card that could go stale.
+   */
+  async warmUp(): Promise<void> {
+    try {
+      await this.validSession();
+    } catch {
+      // Best effort, exactly like prefetch.
+    }
+  }
+
+  private async runPrefetch(
+    key: string,
+    placement: CrossPromoPlacement,
+  ): Promise<void> {
+    try {
+      const card = await this.requestCard(placement);
+      if (card) this.prefetched.set(key, card);
+    } catch {
+      // Swallowed: see prefetch's contract.
+    } finally {
+      this.prefetchRequests.delete(key);
+    }
+  }
+
   async fetchCard(
     placement: CrossPromoPlacement,
   ): Promise<PromoCardData | null> {
@@ -83,6 +162,32 @@ export class CrossPromoClient {
         'placement must be a CrossPromoPlacement option',
       );
     }
+    const key = placement;
+    const ready = this.takePrefetched(key);
+    if (ready) return ready;
+
+    // A prefetch already on the wire: wait for it rather than starting a second
+    // identical request and wasting the impression the first one is holding.
+    const inflight = this.prefetchRequests.get(key);
+    if (inflight) {
+      await inflight;
+      const arrived = this.takePrefetched(key);
+      if (arrived) return arrived;
+    }
+    return this.requestCard(placement);
+  }
+
+  private takePrefetched(key: string): PromoCardData | null {
+    const held = this.prefetched.get(key);
+    if (!held) return null;
+    this.prefetched.delete(key);
+    const remaining = held.expiresAt.getTime() - Date.now();
+    return remaining > CrossPromoClient.cardMinimumRemainingMs ? held : null;
+  }
+
+  private async requestCard(
+    placement: CrossPromoPlacement,
+  ): Promise<PromoCardData | null> {
     const session = await this.validSession();
     const response = await this.post<{ card: CardWire | null }>(
       '/v1/cards',
@@ -120,12 +225,22 @@ export class CrossPromoClient {
   }
 
   private async validSession(): Promise<Session> {
-    if (
-      this.session &&
-      this.session.status.expiresAt.getTime() - Date.now() > 30_000
-    ) {
-      return this.session;
+    if (this.session) {
+      const remaining = this.session.status.expiresAt.getTime() - Date.now();
+      if (remaining > CrossPromoClient.sessionMinimumRemainingMs) {
+        if (remaining < CrossPromoClient.sessionRefreshMarginMs) {
+          // Still usable, but close enough to expiry that the next ad would have
+          // paid for a fresh handshake. Renew behind this request and answer it
+          // with the token we already hold.
+          this.renewSessionInBackground();
+        }
+        return this.session;
+      }
     }
+    return this.startSession();
+  }
+
+  private async startSession(): Promise<Session> {
     if (this.sessionRequest) return this.sessionRequest;
     this.sessionRequest = this.createSession();
     try {
@@ -134,6 +249,11 @@ export class CrossPromoClient {
     } finally {
       this.sessionRequest = undefined;
     }
+  }
+
+  private renewSessionInBackground(): void {
+    if (this.sessionRequest) return;
+    void this.startSession().catch(() => {});
   }
 
   private async createSession(): Promise<Session> {
