@@ -34,6 +34,7 @@ public struct CrossPromoToast: View {
                     .foregroundStyle(Color(uiColor: .label))
                     .lineLimit(2)
             }
+            .fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 8)
             PromoAdBadge(palette: palette)
             Text(ad.card.cta)

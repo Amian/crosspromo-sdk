@@ -25,10 +25,13 @@ public struct CrossPromoWidgetTile: View {
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 0) {
+            // 30, not 40: the 155pt square has to hold two lines of name plus
+            // two lines of tagline at the 30-character data-contract maximum,
+            // and iOS 26's text styles are taller than the earlier metrics.
             PromoAdIcon(
                 image: ad.icon,
-                side: 40,
-                cornerRadius: 9,
+                side: 30,
+                cornerRadius: 7,
                 palette: palette,
                 glow: true
             )
@@ -43,6 +46,7 @@ public struct CrossPromoWidgetTile: View {
                     .foregroundStyle(.secondary)
                     .lineLimit(2)
             }
+            .fixedSize(horizontal: false, vertical: true)
             .layoutPriority(1)
             Spacer(minLength: 4)
             HStack(spacing: 3) {
@@ -55,7 +59,7 @@ public struct CrossPromoWidgetTile: View {
             }
             .foregroundStyle(palette.chipText(colorScheme))
         }
-        .padding(14)
+        .padding(12)
         .frame(width: 155, height: 155, alignment: .topLeading)
         .background(shape.fill(washGradient))
         .overlay(shape.strokeBorder(palette.hairline(colorScheme), lineWidth: 1))

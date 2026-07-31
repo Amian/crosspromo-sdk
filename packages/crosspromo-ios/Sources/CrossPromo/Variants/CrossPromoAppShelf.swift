@@ -69,10 +69,10 @@ private struct PromoShelfEntry: View {
                 .font(.caption2)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
-                .lineLimit(2)
+                .lineLimit(3)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .frame(width: 84)
+        .frame(maxWidth: 84)
         .contentShape(Rectangle())
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Ad. \(ad.card.appName). \(ad.card.tagline)")

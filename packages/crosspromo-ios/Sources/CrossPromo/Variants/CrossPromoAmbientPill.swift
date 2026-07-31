@@ -50,23 +50,18 @@ public struct CrossPromoAmbientPill: View {
     private var content: some View {
         HStack(spacing: 8) {
             PromoAdIcon(image: ad.icon, side: 22, cornerRadius: 6, palette: palette)
-            HStack(spacing: 0) {
+            VStack(alignment: .leading, spacing: 1) {
                 Text(ad.card.appName)
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(Color(uiColor: .label))
-                    .lineLimit(1)
-                    .layoutPriority(1)
-                Text(" · ")
-                    .font(.footnote)
-                    .foregroundStyle(Color(uiColor: .secondaryLabel))
-                    .lineLimit(1)
+                    .lineLimit(2)
                 Text(ad.card.tagline)
-                    .font(.footnote)
+                    .font(.caption2)
                     .foregroundStyle(Color(uiColor: .secondaryLabel))
-                    .lineLimit(1)
-                    .truncationMode(.tail)
+                    .lineLimit(2)
             }
-            .frame(maxWidth: 260, alignment: .leading)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: 240, alignment: .leading)
             PromoAdBadge(palette: palette)
         }
         .contentShape(Capsule(style: .continuous))

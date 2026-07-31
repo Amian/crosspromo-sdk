@@ -26,9 +26,9 @@ public struct CrossPromoInlineRow: View {
                 Text(ad.card.tagline)
                     .font(.footnote)
                     .foregroundStyle(Color(uiColor: .secondaryLabel))
-                    .lineLimit(1)
-                    .truncationMode(.tail)
+                    .lineLimit(2)
             }
+            .fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 8)
             PromoAdBadge(palette: palette)
             Image(systemName: "chevron.right")

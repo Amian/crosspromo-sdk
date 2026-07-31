@@ -24,6 +24,7 @@ public struct CrossPromoFooterBadge: View {
                 .foregroundStyle(Color(uiColor: .secondaryLabel))
                 .lineLimit(2)
                 .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
             Image(systemName: "arrow.up.right")
                 .font(.caption2)
                 .foregroundStyle(Color(uiColor: .tertiaryLabel))
