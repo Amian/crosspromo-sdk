@@ -96,7 +96,7 @@ test('sends app identity and only reports qualified impressions', async () => {
   });
   assert.deepEqual(challenge.sdk, {
     name: 'crosspromo-react-native',
-    version: '0.3.5',
+    version: '0.3.6',
   });
   assert.equal(challenge.installation_id, undefined);
   assert.equal(challenge.locale, undefined);
@@ -104,7 +104,10 @@ test('sends app identity and only reports qualified impressions', async () => {
   const verifyEvidence = requests[1]!.body.evidence as Record<string, unknown>;
   assert.equal(verifyEvidence.provider, 'app_transaction');
   assert.equal(verifyEvidence.app_transaction_jws, 'apple.signed.jws');
-  assert.equal(requests[2]!.body.placement, 'post_scan');
+  // The card request no longer names a slot; the impression does, because that
+  // is where the ad was actually seen.
+  assert.equal('placement' in requests[2]!.body, false);
+  assert.equal(requests[3]!.body.placement, 'post_scan');
   const headers = requests[3]!.headers as Record<string, string>;
   assert.ok(headers['Idempotency-Key']);
 });
@@ -113,7 +116,7 @@ test('a prefetched card is served without any further network call', async () =>
   const transport = new FakeTransport();
   const client = newClient(transport);
 
-  await client.prefetch(CrossPromoPlacement.PostScan);
+  await client.prefetch();
   assert.deepEqual(
     transport.requests.map((r) => r.path),
     ['/v1/sdk/sessions/challenge', '/v1/sdk/sessions/verify', '/v1/cards'],
@@ -129,7 +132,7 @@ test('a prefetched card is single use, because its impression token is', async (
   const transport = new FakeTransport();
   const client = newClient(transport);
 
-  await client.prefetch(CrossPromoPlacement.PostScan);
+  await client.prefetch();
   const first = await client.fetchCard(CrossPromoPlacement.PostScan);
   const second = await client.fetchCard(CrossPromoPlacement.PostScan);
 
@@ -140,16 +143,59 @@ test('a prefetched card is single use, because its impression token is', async (
   assert.equal(transport.cardRequestCount, 2);
 });
 
-test('a prefetched card for another placement is not reused', async () => {
+test('one prefetched card fills whichever placement asks for it first', async () => {
+  // Placement never changes which ad the backend picks, so a card held from
+  // before we knew the slot is perfectly good for any of them.
   const transport = new FakeTransport();
   const client = newClient(transport);
 
-  await client.prefetch(CrossPromoPlacement.PostScan);
+  await client.prefetch();
   const card = await client.fetchCard(CrossPromoPlacement.Settings);
 
-  assert.equal(card?.cardId, 'c_2');
-  assert.equal(transport.cardRequestCount, 2);
-  assert.equal(transport.requests[transport.requests.length - 1]?.body.placement, 'settings');
+  assert.equal(card?.cardId, 'c_1');
+  assert.equal(transport.cardRequestCount, 1);
+});
+
+test('the card request no longer pins the card to a slot', async () => {
+  const transport = new FakeTransport();
+  const client = newClient(transport);
+
+  await client.fetchCard(CrossPromoPlacement.PostScan);
+
+  const cardRequest = transport.requests.find((r) => r.path === '/v1/cards');
+  // The slot is reported when the ad is seen, not when it is fetched.
+  assert.equal(cardRequest && 'placement' in cardRequest.body, false);
+});
+
+test('the impression reports the slot the card was actually shown in', async () => {
+  const transport = new FakeTransport();
+  const client = newClient(transport);
+
+  const card = await client.fetchCard(CrossPromoPlacement.EmptyState);
+  await client.recordImpression(card!, 0.9, 2_000);
+
+  const impression = transport.requests.find(
+    (r) => r.path === '/v1/events/impressions',
+  );
+  assert.equal(impression?.body.placement, 'empty_state');
+});
+
+test('the click link carries the slot too', async () => {
+  const transport = new FakeTransport();
+  const platform = new FakePlatform();
+  const client = new CrossPromoClient(
+    { appKey: 'cp_live_example', baseUrl: 'https://example.test' },
+    platform,
+    transport.fetch,
+    () => {},
+  );
+
+  const card = await client.fetchCard(CrossPromoPlacement.Result);
+  await client.open(card!);
+
+  assert.equal(platform.openedUrls.length, 1);
+  const opened = new URL(platform.openedUrls[0]!);
+  assert.equal(opened.searchParams.get('placement'), 'result');
 });
 
 test('a prefetched card too close to expiry is discarded, not shown', async () => {
@@ -158,7 +204,7 @@ test('a prefetched card too close to expiry is discarded, not shown', async () =
   const transport = new FakeTransport({ cardLifetimeMs: 5_000 });
   const client = newClient(transport);
 
-  await client.prefetch(CrossPromoPlacement.PostScan);
+  await client.prefetch();
   assert.equal(transport.cardRequestCount, 1);
 
   const card = await client.fetchCard(CrossPromoPlacement.PostScan);
@@ -175,7 +221,7 @@ test('a card requested while a prefetch is in flight reuses that request', async
   const transport = new FakeTransport({ cardGate: gate });
   const client = newClient(transport);
 
-  const warming = client.prefetch(CrossPromoPlacement.PostScan);
+  const warming = client.prefetch();
   const pending = client.fetchCard(CrossPromoPlacement.PostScan);
   resolveGate();
   const card = await pending;
@@ -191,7 +237,7 @@ test('a failed prefetch stays silent and the card is fetched on demand', async (
   const client = newClient(transport);
 
   // Must not throw: nothing was on screen when this ran.
-  await client.prefetch(CrossPromoPlacement.PostScan);
+  await client.prefetch();
 
   await assert.rejects(
     client.fetchCard(CrossPromoPlacement.PostScan),
@@ -205,7 +251,7 @@ test('prefetching also warms the card icon', async () => {
   const warmed: string[] = [];
   const client = newClient(transport, (iconUrl) => warmed.push(iconUrl));
 
-  await client.prefetch(CrossPromoPlacement.PostScan);
+  await client.prefetch();
 
   assert.deepEqual(warmed, ['https://cdn.example/icon.png']);
 });
@@ -215,7 +261,7 @@ test('a prefetch that returns no card warms nothing', async () => {
   const warmed: string[] = [];
   const client = newClient(transport, (iconUrl) => warmed.push(iconUrl));
 
-  await client.prefetch(CrossPromoPlacement.PostScan);
+  await client.prefetch();
 
   assert.deepEqual(warmed, []);
 });
@@ -228,7 +274,7 @@ test('an icon warmer that throws cannot break the prefetch', async () => {
     throw new Error('no image cache');
   });
 
-  await client.prefetch(CrossPromoPlacement.PostScan);
+  await client.prefetch();
   const card = await client.fetchCard(CrossPromoPlacement.PostScan);
 
   assert.equal(card?.cardId, 'c_1');
@@ -357,5 +403,9 @@ class FakePlatform implements CrossPromoPlatform {
     };
   }
 
-  async openUrl(): Promise<void> {}
+  readonly openedUrls: string[] = [];
+
+  async openUrl(url: string): Promise<void> {
+    this.openedUrls.push(url);
+  }
 }

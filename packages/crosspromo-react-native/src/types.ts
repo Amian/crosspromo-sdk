@@ -15,19 +15,15 @@ export interface CrossPromoConfiguration {
   baseUrl?: string;
   requestTimeoutMs?: number;
   /**
-   * Warms the session and one card for each placement given, in the background,
-   * so the first card the app shows appears without a network wait. Pass the
-   * placements the app actually uses — a prefetched card is held until something
-   * asks for it, and anything that fails is fetched on demand.
+   * Everything an ad needs — the session handshake, one card, and its icon — is
+   * fetched in the background as soon as `configure` is called, so the first card
+   * the app shows appears with no network wait.
+   *
+   * No placement is needed: a card is identical whichever slot it lands in, so the
+   * one held here fills whichever placement appears first, and reports that slot
+   * when it is actually seen. Defaults to true; pass `false` to opt out.
    */
-  prefetchPlacements?: CrossPromoPlacement[];
-  /**
-   * Warms the session handshake in the background as soon as `configure` is
-   * called, so the first ad request only ever waits for its own card fetch.
-   * Defaults to true. Has no effect when `prefetchPlacements` is non-empty —
-   * prefetching already establishes the session.
-   */
-  warmUpSession?: boolean;
+  prefetch?: boolean;
 }
 
 export interface PromoCardData {

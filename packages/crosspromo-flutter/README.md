@@ -39,25 +39,18 @@ Other typed options are `.result`, `.settings`, and `.emptyState`.
 
 ## Making cards appear instantly
 
-Showing a card needs a session handshake and a card fetch. By default `configure`
-warms the handshake in the background, so a card only ever waits for its own fetch.
-
-To remove the wait entirely, name the placements the app uses and the card — icon
-included — is fetched and held before there is anywhere to show it:
+`configure` fetches everything an ad needs — the session handshake, one card, and its
+icon — in the background, so the first card the app shows appears with no network
+wait. There is nothing to configure:
 
 ```dart
-CrossPromo.configure(
-  appKey: 'cp_live_your_public_app_key',
-  prefetchPlacements: [CrossPromoPlacement.postScan],
-);
+CrossPromo.configure(appKey: 'cp_live_your_public_app_key');
 ```
 
-Prefetching is best effort and never throws: if it fails, the card is fetched on
-demand exactly as before. A prefetched card is used once and is discarded rather
-than shown if it is close to expiring. Pass `warmUpSession: false` to opt out of
-the background handshake.
-
-The SDK automatically supplies the iOS bundle ID, version, and build number.
+No placement is needed: a card is identical whichever slot it lands in, so the one
+held for you fills whichever placement appears first and reports that slot when the
+ad is actually seen. Prefetching is best effort and never throws — if it fails, the
+card is fetched on demand exactly as before. Pass `prefetch: false` to opt out.
 
 ## Local mock previews
 

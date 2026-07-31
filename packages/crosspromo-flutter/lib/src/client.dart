@@ -50,14 +50,19 @@ class CrossPromoClient {
   _Session? _session;
   Future<_Session>? _sessionRequest;
 
-  /// Cards fetched ahead of being needed, keyed by placement.
+  /// One card fetched ahead of being needed.
   ///
-  /// Cards are single use: each carries its own impression token, and the backend
-  /// treats a repeated token as a replay. Handing one card to two placements would
-  /// therefore silently drop the second impression, so taking a prefetched card
-  /// removes it from here.
-  final Map<String, PromoCardData> _prefetched = {};
-  final Map<String, Future<void>> _prefetchRequests = {};
+  /// A card is identical whichever slot it lands in — placement never affects which
+  /// ad the backend picks — so a single held card can fill whichever placement
+  /// appears first. It is single use, though: each carries its own impression token
+  /// and the backend treats a repeat as a replay, so taking it removes it.
+  PromoCardData? _prefetchedCard;
+  Future<void>? _prefetchRequest;
+
+  /// Which slot each card was handed to, so its impression and click can report
+  /// where it was actually shown. Bounded: cards are short-lived and only a couple
+  /// are ever in flight.
+  final Map<String, String> _placementByCard = {};
 
   Future<CrossPromoSessionStatus> sessionStatus() async =>
       (await _validSession()).status;
@@ -72,15 +77,12 @@ class CrossPromoClient {
   ///
   /// Safe to call repeatedly: concurrent calls for one placement share a single
   /// fetch, and a placement that already holds a fresh card does nothing.
-  Future<void> prefetch({
-    required CrossPromoPlacement placement,
-  }) {
-    final key = placement.value;
-    final inflight = _prefetchRequests[key];
+  Future<void> prefetch() {
+    final inflight = _prefetchRequest;
     if (inflight != null) return inflight;
-    if (_prefetched[key] != null) return Future<void>.value();
-    final request = _runPrefetch(key, placement);
-    _prefetchRequests[key] = request;
+    if (_prefetchedCard != null) return Future<void>.value();
+    final request = _runPrefetch();
+    _prefetchRequest = request;
     return request;
   }
 
@@ -94,11 +96,11 @@ class CrossPromoClient {
     }
   }
 
-  Future<void> _runPrefetch(String key, CrossPromoPlacement placement) async {
+  Future<void> _runPrefetch() async {
     try {
-      final card = await _requestCard(placement);
+      final card = await _requestCard();
       if (card != null) {
-        _prefetched[key] = card;
+        _prefetchedCard = card;
         // Pull the icon in too. Without this the card text would appear instantly
         // and the icon would still fade in a beat later.
         _warmIcon(card.iconUrl);
@@ -106,42 +108,51 @@ class CrossPromoClient {
     } on Object {
       // Swallowed: see prefetch's contract.
     } finally {
-      _prefetchRequests.remove(key);
+      _prefetchRequest = null;
     }
   }
 
   Future<PromoCardData?> fetchCard({
     required CrossPromoPlacement placement,
   }) async {
-    final key = placement.value;
-    final ready = _takePrefetched(key);
-    if (ready != null) return ready;
+    final ready = _takePrefetched();
+    if (ready != null) return _assign(ready, placement);
 
     // A prefetch already on the wire: wait for it rather than starting a second
     // identical request and wasting the impression the first one is holding.
-    final inflight = _prefetchRequests[key];
+    final inflight = _prefetchRequest;
     if (inflight != null) {
       await inflight;
-      final arrived = _takePrefetched(key);
-      if (arrived != null) return arrived;
+      final arrived = _takePrefetched();
+      if (arrived != null) return _assign(arrived, placement);
     }
-    return _requestCard(placement);
+    final fresh = await _requestCard();
+    return fresh == null ? null : _assign(fresh, placement);
   }
 
-  PromoCardData? _takePrefetched(String key) {
-    final held = _prefetched.remove(key);
+  PromoCardData? _takePrefetched() {
+    final held = _prefetchedCard;
     if (held == null) return null;
+    _prefetchedCard = null;
     final remaining = held.expiresAt.difference(DateTime.now());
     return remaining > _cardMinimumRemaining ? held : null;
   }
 
-  Future<PromoCardData?> _requestCard(CrossPromoPlacement placement) async {
+  /// Records which slot this card went to, so the impression and click that follow
+  /// can say where it was really shown.
+  PromoCardData _assign(PromoCardData card, CrossPromoPlacement placement) {
+    if (_placementByCard.length >= 32) {
+      _placementByCard.remove(_placementByCard.keys.first);
+    }
+    _placementByCard[card.cardId] = placement.value;
+    return card;
+  }
+
+  Future<PromoCardData?> _requestCard() async {
     final session = await _validSession();
-    final json = await _post(
-        '/v1/cards',
-        {
-          'placement': placement.value,
-        },
+    // No placement: the backend returns the same card either way, and sending one
+    // here would tie this card to a slot before we know where it will be shown.
+    final json = await _post('/v1/cards', const {},
         bearerToken: session.accessToken);
     final card = json['card'];
     return card == null
@@ -156,6 +167,7 @@ class CrossPromoClient {
   }) async {
     if (visibleFraction < 0.5 || duration < const Duration(seconds: 1)) return;
     final session = await _validSession();
+    final placement = _placementByCard[card.cardId];
     await _post(
       '/v1/events/impressions',
       {
@@ -165,6 +177,7 @@ class CrossPromoClient {
           'visible_fraction': visibleFraction.clamp(0, 1),
           'duration_ms': duration.inMilliseconds,
         },
+        if (placement != null) 'placement': placement,
       },
       bearerToken: session.accessToken,
       idempotencyKey: _randomId(),
@@ -172,7 +185,18 @@ class CrossPromoClient {
     );
   }
 
-  Future<void> open(PromoCardData card) => _platform.openUrl(card.clickUrl);
+  Future<void> open(PromoCardData card) {
+    // A click is a plain redirect with no body, so the slot travels on the link.
+    // The backend ignores this whenever the token already names a placement.
+    final placement = _placementByCard[card.cardId];
+    final url = placement == null
+        ? card.clickUrl
+        : card.clickUrl.replace(queryParameters: {
+            ...card.clickUrl.queryParameters,
+            'placement': placement,
+          });
+    return _platform.openUrl(url);
+  }
 
   Future<_Session> _validSession() async {
     final existing = _session;
@@ -216,7 +240,7 @@ class CrossPromoClient {
       'app_key': configuration.appKey,
       'environment': configuration.environment.name,
       'app': app.toJson(),
-      'sdk': {'name': 'crosspromo-flutter', 'version': '0.3.5'},
+      'sdk': {'name': 'crosspromo-flutter', 'version': '0.3.6'},
     });
     final evidence = await _platform.generateEvidence(
       challengeBase64: challenge['challenge_base64']! as String,
@@ -285,23 +309,21 @@ class _Session {
 abstract final class CrossPromo {
   static CrossPromoClient? _client;
 
-  /// The session handshake is warmed in the background as soon as this is called.
-  /// It is two of the three requests an ad needs and does not depend on knowing
-  /// where ads will appear, so doing it here means the first card only ever waits
-  /// for its own fetch. Pass `warmUpSession: false` to opt out.
+  /// Everything an ad needs — the session handshake, one card, and its icon — is
+  /// fetched in the background as soon as this is called, so the first card the app
+  /// shows appears with no network wait.
   ///
-  /// [prefetchPlacements] goes further and fetches an actual card per placement, so
-  /// the first card appears with no network wait at all. Pass the placements the app
-  /// actually uses — a prefetched card is held until something asks for it, and
-  /// anything that fails is simply fetched on demand.
+  /// No placement is needed: a card is identical whichever slot it lands in, so the
+  /// one held here fills whichever placement appears first, and reports that slot
+  /// when it is actually seen. Pass `prefetch: false` to opt out.
   ///
-  /// Both are best effort and neither can throw into the caller.
+  /// Best effort — it cannot throw into the caller, and anything that fails is
+  /// simply fetched on demand instead.
   static void configure({
     required String appKey,
     CrossPromoEnvironment? environment,
     Uri? baseUri,
-    Iterable<CrossPromoPlacement> prefetchPlacements = const [],
-    bool warmUpSession = true,
+    bool prefetch = true,
   }) {
     final client = CrossPromoClient(
       CrossPromoConfiguration(
@@ -311,15 +333,7 @@ abstract final class CrossPromo {
       ),
     );
     _client = client;
-    final placements = prefetchPlacements.toList(growable: false);
-    for (final placement in placements) {
-      unawaited(client.prefetch(placement: placement));
-    }
-    // Prefetching already establishes the session, so only warm it separately when
-    // there is nothing to prefetch.
-    if (warmUpSession && placements.isEmpty) {
-      unawaited(client.warmUp());
-    }
+    if (prefetch) unawaited(client.prefetch());
   }
 
   static CrossPromoClient get client {

@@ -50,7 +50,7 @@ struct CrossPromoClientTests {
         let sdk = try #require(challengeJSON["sdk"] as? [String: Any])
         #expect(app["bundle_id"] as? String == "app.example.publisher")
         #expect(app["version"] as? String == "3.2.1")
-        #expect(sdk["version"] as? String == "0.3.5")
+        #expect(sdk["version"] as? String == "0.3.6")
         #expect(challengeJSON["installation_id"] == nil)
         #expect(challengeJSON["locale"] == nil)
         #expect(challengeJSON["integrity"] == nil)
@@ -65,7 +65,14 @@ struct CrossPromoClientTests {
         let cardJSON = try #require(
             JSONSerialization.jsonObject(with: cardBody) as? [String: Any]
         )
-        #expect(cardJSON["placement"] as? String == "post_scan")
+        // The card request no longer names a slot; the impression does, because that
+        // is where the ad was actually seen.
+        #expect(cardJSON["placement"] == nil)
+        let impressionBody = try #require(requests[3].httpBody)
+        let impressionJSON = try #require(
+            JSONSerialization.jsonObject(with: impressionBody) as? [String: Any]
+        )
+        #expect(impressionJSON["placement"] as? String == "post_scan")
         #expect(requests[3].value(forHTTPHeaderField: "Idempotency-Key") != nil)
     }
 
@@ -90,7 +97,7 @@ struct CrossPromoClientTests {
         let transport = MockTransport()
         let client = try makeClient(transport)
 
-        await client.prefetch(placement: .postScan)
+        await client.prefetch()
         #expect(await transport.requests.map(\.url?.path) == [
             "/v1/sdk/sessions/challenge",
             "/v1/sdk/sessions/verify",
@@ -107,7 +114,7 @@ struct CrossPromoClientTests {
         let transport = MockTransport()
         let client = try makeClient(transport)
 
-        await client.prefetch(placement: .postScan)
+        await client.prefetch()
         let first = try #require(await client.fetchCard(placement: .postScan))
         let second = try #require(await client.fetchCard(placement: .postScan))
 
@@ -117,16 +124,47 @@ struct CrossPromoClientTests {
         #expect(await transport.cardRequestCount == 2)
     }
 
-    @Test("a prefetched card for another placement is not reused")
-    func prefetchIsPerPlacement() async throws {
+    @Test("one prefetched card fills whichever placement asks for it first")
+    func prefetchedCardFillsAnyPlacement() async throws {
+        // Placement never changes which ad the backend picks, so a card held from
+        // before we knew the slot is perfectly good for any of them.
         let transport = MockTransport()
         let client = try makeClient(transport)
 
-        await client.prefetch(placement: .postScan)
+        await client.prefetch()
         let card = try #require(await client.fetchCard(placement: .settings))
 
-        #expect(card.cardID == "c_2")
-        #expect(await transport.cardRequestCount == 2)
+        #expect(card.cardID == "c_1", "the held card is used, not a new one")
+        #expect(await transport.cardRequestCount == 1)
+    }
+
+    @Test("the card request no longer pins the card to a slot")
+    func cardRequestOmitsPlacement() async throws {
+        let transport = MockTransport()
+        let client = try makeClient(transport)
+
+        _ = try await client.fetchCard(placement: .postScan)
+
+        let requests = await transport.requests
+        let cardBody = try #require(requests.first { $0.url?.path == "/v1/cards" }?.httpBody)
+        let json = try #require(JSONSerialization.jsonObject(with: cardBody) as? [String: Any])
+        #expect(json["placement"] == nil, "the slot is reported when seen, not when fetched")
+    }
+
+    @Test("the impression reports the slot the card was actually shown in")
+    func impressionReportsPlacement() async throws {
+        let transport = MockTransport()
+        let client = try makeClient(transport)
+
+        let card = try #require(await client.fetchCard(placement: .emptyState))
+        try await client.recordImpression(for: card, visibleFraction: 0.9, duration: 2)
+
+        let requests = await transport.requests
+        let body = try #require(
+            requests.first { $0.url?.path == "/v1/events/impressions" }?.httpBody
+        )
+        let json = try #require(JSONSerialization.jsonObject(with: body) as? [String: Any])
+        #expect(json["placement"] as? String == "empty_state")
     }
 
     @Test("a prefetched card too close to expiry is discarded, not shown")
@@ -136,7 +174,7 @@ struct CrossPromoClientTests {
         let transport = MockTransport(cardLifetime: 5)
         let client = try makeClient(transport)
 
-        await client.prefetch(placement: .postScan)
+        await client.prefetch()
         #expect(await transport.cardRequestCount == 1)
 
         let card = try #require(await client.fetchCard(placement: .postScan))
@@ -200,7 +238,7 @@ struct CrossPromoClientTests {
         let warmed = IconWarmRecorder()
         let client = try makeClient(transport, iconWarmer: { url in warmed.record(url) })
 
-        await client.prefetch(placement: .postScan)
+        await client.prefetch()
 
         #expect(warmed.urls == [URL(string: "https://cdn.example/icon.png")!])
     }
@@ -211,7 +249,7 @@ struct CrossPromoClientTests {
         let warmed = IconWarmRecorder()
         let client = try makeClient(transport, iconWarmer: { url in warmed.record(url) })
 
-        await client.prefetch(placement: .postScan)
+        await client.prefetch()
 
         #expect(warmed.urls.isEmpty)
     }
@@ -223,7 +261,7 @@ struct CrossPromoClientTests {
 
         await withTaskGroup(of: Void.self) { group in
             for _ in 0..<3 {
-                group.addTask { await client.prefetch(placement: .postScan) }
+                group.addTask { await client.prefetch() }
             }
         }
 
@@ -360,5 +398,25 @@ private actor MockDeviceContext: CrossPromoDeviceContextProviding {
 
     func generateEvidence(challengeBase64: String, mode: String) async throws -> IntegrityEvidence {
         IntegrityEvidence(provider: "app_transaction", appTransactionJWS: "apple.signed.jws")
+    }
+}
+
+@Suite("CrossPromo click link")
+struct CrossPromoClickLinkTests {
+    @Test("the click link carries the slot too")
+    func clickLinkCarriesPlacement() throws {
+        let url = try #require(URL(string: "https://api.test/v1/c/tok_1"))
+        let out = crossPromoClickURL(url, in: .emptyState)
+        #expect(out.absoluteString == "https://api.test/v1/c/tok_1?placement=empty_state")
+    }
+
+    @Test("an existing query string on the click link is preserved")
+    func clickLinkKeepsExistingQuery() throws {
+        let url = try #require(URL(string: "https://api.test/v1/c/tok_1?ref=abc"))
+        let out = try #require(URLComponents(url: crossPromoClickURL(url, in: .result),
+                                             resolvingAgainstBaseURL: false))
+        let items = try #require(out.queryItems)
+        #expect(items.contains { $0.name == "ref" && $0.value == "abc" })
+        #expect(items.contains { $0.name == "placement" && $0.value == "result" })
     }
 }

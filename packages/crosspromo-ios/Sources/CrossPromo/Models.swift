@@ -139,7 +139,10 @@ struct SessionVerifyResponse: Codable, Sendable {
 }
 
 struct CardRequest: Codable, Sendable {
-    let placement: String
+    // Optional since 0.3.6: a card is the same whichever slot it lands in, so the
+    // SDK no longer pins it to one before it knows where it will be shown. Nil is
+    // omitted from the encoded body rather than sent as null.
+    let placement: String?
 }
 
 struct CardResponse: Codable, Sendable {
@@ -160,11 +163,15 @@ struct ImpressionRequest: Codable, Sendable {
     let impressionToken: String
     let occurredAt: Date
     let viewability: Viewability
+    /// The slot the card was actually shown in. Ignored by the backend whenever the
+    /// signed token already names one, so older SDKs keep their attested value.
+    let placement: String?
 
     enum CodingKeys: String, CodingKey {
         case impressionToken = "impression_token"
         case occurredAt = "occurred_at"
         case viewability
+        case placement
     }
 }
 
@@ -177,4 +184,20 @@ struct ErrorEnvelope: Codable, Sendable {
 struct APIErrorBody: Codable, Sendable {
     let code: String?
     let message: String?
+}
+
+/// A click is a plain redirect with no body, so the slot travels on the link. The
+/// backend ignores this whenever the signed token already names a placement, so SDKs
+/// up to 0.3.5 keep their server-attested value.
+///
+/// Lives here rather than beside the card view so it is Foundation-only and can be
+/// tested on any platform — the card view is compiled out where UIKit is absent.
+func crossPromoClickURL(_ url: URL, in placement: CrossPromoPlacement) -> URL {
+    guard var components = URLComponents(url: url, resolvingAgainstBaseURL: false) else {
+        return url
+    }
+    var items = components.queryItems ?? []
+    items.append(URLQueryItem(name: "placement", value: placement.rawValue))
+    components.queryItems = items
+    return components.url ?? url
 }

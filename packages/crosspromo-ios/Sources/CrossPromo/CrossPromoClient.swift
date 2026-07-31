@@ -46,14 +46,19 @@ public actor CrossPromoClient {
     /// starting their own. Two cards appearing at once used to mean two handshakes.
     private var sessionTask: Task<Session, Error>?
 
-    /// Cards fetched ahead of being needed, keyed by placement.
+    /// One card fetched ahead of being needed.
     ///
-    /// Cards are single use: each carries its own impression token, and the backend
-    /// treats a repeated token as a replay. Handing one card to two placements would
-    /// therefore silently drop the second impression, so taking a prefetched card
-    /// removes it from here.
-    private var prefetched: [String: PromoCardData] = [:]
-    private var prefetchTasks: [String: Task<Void, Never>] = [:]
+    /// A card is identical whichever slot it lands in — placement never affects which
+    /// ad the backend picks — so a single held card can fill whichever placement
+    /// appears first. It is single use, though: each carries its own impression token
+    /// and the backend treats a repeat as a replay, so taking it removes it.
+    private var prefetchedCard: PromoCardData?
+    private var prefetchTask: Task<Void, Never>?
+
+    /// Which slot each card was handed to, so its impression and click can report
+    /// where it was actually shown. Bounded: cards are short-lived and only a couple
+    /// are ever in flight.
+    private var placementByCard: [String: String] = [:]
 
     public init(configuration: CrossPromoConfiguration) {
         self.configuration = configuration
@@ -89,15 +94,14 @@ public actor CrossPromoClient {
     ///
     /// Safe to call repeatedly: concurrent calls for one placement share a single
     /// fetch, and a placement that already holds a fresh card does nothing.
-    public func prefetch(placement: CrossPromoPlacement) async {
-        let key = placement.rawValue
-        if let existing = prefetchTasks[key] {
+    public func prefetch() async {
+        if let existing = prefetchTask {
             await existing.value
             return
         }
-        if prefetched[key] != nil { return }
-        let task = Task { await self.runPrefetch(key: key, placement: placement) }
-        prefetchTasks[key] = task
+        if prefetchedCard != nil { return }
+        let task = Task { await self.runPrefetch() }
+        prefetchTask = task
         await task.value
     }
 
@@ -107,11 +111,11 @@ public actor CrossPromoClient {
         _ = try? await validSession()
     }
 
-    private func runPrefetch(key: String, placement: CrossPromoPlacement) async {
-        defer { prefetchTasks[key] = nil }
+    private func runPrefetch() async {
+        defer { prefetchTask = nil }
         do {
-            if let card = try await requestCard(placement: placement) {
-                prefetched[key] = card
+            if let card = try await requestCard() {
+                prefetchedCard = card
                 // Pull the icon in too. Without this the card text would appear
                 // instantly and the icon would still fade in a beat later.
                 warmIcon(card.iconURL)
@@ -122,29 +126,47 @@ public actor CrossPromoClient {
     }
 
     public func fetchCard(placement: CrossPromoPlacement) async throws -> PromoCardData? {
-        let key = placement.rawValue
-        if let ready = takePrefetched(key: key) { return ready }
+        if let ready = takePrefetched() { return assign(ready, to: placement) }
 
         // A prefetch already on the wire: wait for it rather than starting a second
         // identical request and wasting the impression the first one is holding.
-        if let inflight = prefetchTasks[key] {
+        if let inflight = prefetchTask {
             await inflight.value
-            if let arrived = takePrefetched(key: key) { return arrived }
+            if let arrived = takePrefetched() { return assign(arrived, to: placement) }
         }
-        return try await requestCard(placement: placement)
+        guard let fresh = try await requestCard() else { return nil }
+        return assign(fresh, to: placement)
     }
 
-    private func takePrefetched(key: String) -> PromoCardData? {
-        guard let held = prefetched.removeValue(forKey: key) else { return nil }
+    private func takePrefetched() -> PromoCardData? {
+        guard let held = prefetchedCard else { return nil }
+        prefetchedCard = nil
         return held.expiresAt.timeIntervalSinceNow > Self.cardMinimumRemaining ? held : nil
     }
 
-    private func requestCard(placement: CrossPromoPlacement) async throws -> PromoCardData? {
+    /// Records which slot this card went to, so the impression and click that follow
+    /// can say where it was really shown.
+    private func assign(_ card: PromoCardData, to placement: CrossPromoPlacement) -> PromoCardData {
+        if placementByCard.count >= 32, let oldest = placementByCard.keys.first {
+            placementByCard.removeValue(forKey: oldest)
+        }
+        placementByCard[card.cardID] = placement.rawValue
+        return card
+    }
+
+    /// The slot a card was shown in, for callers building the click link.
+    public func placement(for card: PromoCardData) -> String? {
+        placementByCard[card.cardID]
+    }
+
+    private func requestCard() async throws -> PromoCardData? {
         let session = try await validSession()
+        // No placement: the backend returns the same card either way, and sending one
+        // here would tie this card to a slot before we know where it will be shown.
         let response: CardResponse = try await request(
             path: "/v1/cards",
             method: "POST",
-            body: CardRequest(placement: placement.rawValue),
+            body: CardRequest(placement: nil),
             bearerToken: session.accessToken
         )
         return response.card
@@ -163,7 +185,8 @@ public actor CrossPromoClient {
             viewability: .init(
                 visibleFraction: min(1, max(0, visibleFraction)),
                 durationMS: Int(duration * 1_000)
-            )
+            ),
+            placement: placementByCard[card.cardID]
         )
         let _: EmptyResponse = try await request(
             path: "/v1/events/impressions",
@@ -282,39 +305,29 @@ public actor CrossPromoClient {
 
 @MainActor
 public enum CrossPromo {
-    public nonisolated static let sdkVersion = "0.3.5"
+    public nonisolated static let sdkVersion = "0.3.6"
     private static var configuredClient: CrossPromoClient?
 
-    /// The session handshake is warmed in the background as soon as this is called.
-    /// It is two of the three requests an ad needs and does not depend on knowing
-    /// where ads will appear, so doing it here means the first card only ever waits
-    /// for its own fetch. Pass `warmUpSession: false` to opt out.
+    /// Everything an ad needs — the session handshake, one card, and its icon — is
+    /// fetched in the background as soon as this is called, so the first card the app
+    /// shows appears with no network wait.
     ///
-    /// `prefetchPlacements` goes further and fetches an actual card per placement, so
-    /// the first card appears with no network wait at all. Pass the placements the app
-    /// actually uses — a prefetched card is held until something asks for it, and
-    /// anything that fails is simply fetched on demand.
+    /// No placement is needed: a card is identical whichever slot it lands in, so the
+    /// one held here fills whichever placement appears first, and reports that slot
+    /// when it is actually seen. Pass `prefetch: false` to opt out.
     ///
-    /// Both are best effort and neither can throw into the caller.
+    /// Best effort — it cannot throw into the caller, and anything that fails is
+    /// simply fetched on demand instead.
     public static func configure(
         appKey: String,
         environment: CrossPromoConfiguration.Environment = .automatic,
-        prefetchPlacements: [CrossPromoPlacement] = [],
-        warmUpSession: Bool = true
+        prefetch: Bool = true
     ) throws {
         let configuration = try CrossPromoConfiguration(appKey: appKey, environment: environment)
         let client = CrossPromoClient(configuration: configuration)
         configuredClient = client
-        if !prefetchPlacements.isEmpty {
-            Task {
-                for placement in prefetchPlacements {
-                    await client.prefetch(placement: placement)
-                }
-            }
-        } else if warmUpSession {
-            // Prefetching already establishes the session, so only warm it separately
-            // when there is nothing to prefetch.
-            Task { await client.warmUp() }
+        if prefetch {
+            Task { await client.prefetch() }
         }
     }
 

@@ -70,7 +70,7 @@ void main() {
     );
     expect(app['bundle_id'], 'app.example.publisher');
     expect(app['version'], '3.2.1');
-    expect(sdk['version'], '0.3.5');
+    expect(sdk['version'], '0.3.6');
     expect(
         transport.requests.first.body.containsKey('installation_id'), isFalse);
     expect(transport.requests.first.body.containsKey('locale'), isFalse);
@@ -79,7 +79,10 @@ void main() {
         transport.requests[1].body['evidence']! as Map<String, Object?>;
     expect(evidence['provider'], 'app_transaction');
     expect(evidence['app_transaction_jws'], 'apple.signed.jws');
-    expect(transport.requests[2].body['placement'], 'post_scan');
+    // The card request no longer names a slot; the impression does, because that
+    // is where the ad was actually seen.
+    expect(transport.requests[2].body.containsKey('placement'), isFalse);
+    expect(transport.requests[3].body['placement'], 'post_scan');
     expect(transport.requests.last.idempotencyKey, isNotNull);
   });
 
@@ -87,7 +90,7 @@ void main() {
     final transport = FakeTransport();
     final client = newClient(transport);
 
-    await client.prefetch(placement: CrossPromoPlacement.postScan);
+    await client.prefetch();
     expect(transport.requests.map((r) => r.path), [
       '/v1/sdk/sessions/challenge',
       '/v1/sdk/sessions/verify',
@@ -110,7 +113,7 @@ void main() {
     final transport = FakeTransport();
     final client = newClient(transport);
 
-    await client.prefetch(placement: CrossPromoPlacement.postScan);
+    await client.prefetch();
     final first =
         await client.fetchCard(placement: CrossPromoPlacement.postScan);
     final second =
@@ -122,16 +125,70 @@ void main() {
     expect(transport.cardRequestCount, 2);
   });
 
-  test('a prefetched card for another placement is not reused', () async {
+  test('one prefetched card fills whichever placement asks for it first',
+      () async {
+    // Placement never changes which ad the backend picks, so a card held from
+    // before we knew the slot is perfectly good for any of them.
     final transport = FakeTransport();
     final client = newClient(transport);
 
-    await client.prefetch(placement: CrossPromoPlacement.postScan);
+    await client.prefetch();
     final card = await client.fetchCard(placement: CrossPromoPlacement.settings);
 
-    expect(card?.cardId, 'c_2');
-    expect(transport.cardRequestCount, 2);
-    expect(transport.requests.last.body['placement'], 'settings');
+    expect(card?.cardId, 'c_1', reason: 'the held card is used, not a new one');
+    expect(transport.cardRequestCount, 1);
+  });
+
+  test('the card request no longer pins the card to a slot', () async {
+    final transport = FakeTransport();
+    final client = newClient(transport);
+
+    await client.fetchCard(placement: CrossPromoPlacement.postScan);
+
+    final cardRequest =
+        transport.requests.firstWhere((r) => r.path == '/v1/cards');
+    expect(
+      cardRequest.body.containsKey('placement'),
+      isFalse,
+      reason: 'the slot is reported when the ad is seen, not when it is fetched',
+    );
+  });
+
+  test('the impression reports the slot the card was actually shown in',
+      () async {
+    final transport = FakeTransport();
+    final client = newClient(transport);
+
+    final card =
+        await client.fetchCard(placement: CrossPromoPlacement.emptyState);
+    await client.recordImpression(
+      card!,
+      visibleFraction: 0.9,
+      duration: const Duration(seconds: 2),
+    );
+
+    final impression =
+        transport.requests.firstWhere((r) => r.path == '/v1/events/impressions');
+    expect(impression.body['placement'], 'empty_state');
+  });
+
+  test('the click link carries the slot too', () async {
+    final transport = FakeTransport();
+    final platform = FakePlatform();
+    final client = CrossPromoClient(
+      CrossPromoConfiguration(
+        appKey: 'cp_live_example',
+        baseUri: Uri.parse('https://example.test'),
+      ),
+      transport: transport,
+      platform: platform,
+      iconWarmer: (_) {},
+    );
+
+    final card = await client.fetchCard(placement: CrossPromoPlacement.result);
+    await client.open(card!);
+
+    expect(platform.openedUrls.single.queryParameters['placement'], 'result');
   });
 
   test('a prefetched card too close to expiry is discarded, not shown',
@@ -141,7 +198,7 @@ void main() {
     final transport = FakeTransport(cardLifetime: const Duration(seconds: 5));
     final client = newClient(transport);
 
-    await client.prefetch(placement: CrossPromoPlacement.postScan);
+    await client.prefetch();
     expect(transport.cardRequestCount, 1);
 
     final card = await client.fetchCard(
@@ -157,7 +214,7 @@ void main() {
     final transport = FakeTransport(cardGate: gate.future);
     final client = newClient(transport);
 
-    final warming = client.prefetch(placement: CrossPromoPlacement.postScan);
+    final warming = client.prefetch();
     final pending = client.fetchCard(placement: CrossPromoPlacement.postScan);
     gate.complete();
     final card = await pending;
@@ -177,7 +234,7 @@ void main() {
     final client = newClient(transport);
 
     // Must not throw: nothing was on screen when this ran.
-    await client.prefetch(placement: CrossPromoPlacement.postScan);
+    await client.prefetch();
 
     await expectLater(
       client.fetchCard(placement: CrossPromoPlacement.postScan),
@@ -191,7 +248,7 @@ void main() {
     final warmed = <Uri>[];
     final client = newClient(transport, iconWarmer: warmed.add);
 
-    await client.prefetch(placement: CrossPromoPlacement.postScan);
+    await client.prefetch();
 
     expect(warmed, [Uri.parse('https://cdn.example/icon.png')]);
   });
@@ -201,7 +258,7 @@ void main() {
     final warmed = <Uri>[];
     final client = newClient(transport, iconWarmer: warmed.add);
 
-    await client.prefetch(placement: CrossPromoPlacement.postScan);
+    await client.prefetch();
 
     expect(warmed, isEmpty);
   });
@@ -215,7 +272,7 @@ void main() {
       iconWarmer: (_) => throw StateError('no binding'),
     );
 
-    await client.prefetch(placement: CrossPromoPlacement.postScan);
+    await client.prefetch();
     final card = await client.fetchCard(
       placement: CrossPromoPlacement.postScan,
     );
@@ -233,9 +290,9 @@ void main() {
     final client = newClient(transport);
 
     await Future.wait([
-      client.prefetch(placement: CrossPromoPlacement.postScan),
-      client.prefetch(placement: CrossPromoPlacement.postScan),
-      client.prefetch(placement: CrossPromoPlacement.postScan),
+      client.prefetch(),
+      client.prefetch(),
+      client.prefetch(),
     ]);
 
     expect(transport.cardRequestCount, 1);
@@ -362,6 +419,8 @@ class FakePlatform implements CrossPromoPlatform {
         appTransactionJws: 'apple.signed.jws',
       );
 
+  final openedUrls = <Uri>[];
+
   @override
-  Future<void> openUrl(Uri url) async {}
+  Future<void> openUrl(Uri url) async => openedUrls.add(url);
 }

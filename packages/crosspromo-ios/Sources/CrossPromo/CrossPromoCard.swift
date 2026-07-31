@@ -432,7 +432,7 @@ public final class CrossPromoCardUIView: UIView {
 
     @objc private func openCard() {
         guard allowsOpening, let url = card?.clickURL else { return }
-        UIApplication.shared.open(url)
+        UIApplication.shared.open(crossPromoClickURL(url, in: placement))
     }
 }
 

@@ -5,31 +5,22 @@ const client_1 = require("./client");
 const native_1 = require("./native");
 class CrossPromo {
     /**
-     * `configuration.prefetchPlacements` warms the session and one card for each
-     * placement given, in the background, so the first card the app shows appears
-     * without a network wait. Pass the placements the app actually uses — a
-     * prefetched card is held until something asks for it, and anything that
-     * fails is fetched on demand.
+     * Everything an ad needs — the session handshake, one card, and its icon — is
+     * fetched in the background as soon as this is called, so the first card the app
+     * shows appears with no network wait.
      *
-     * Otherwise, `configuration.warmUpSession` (default true) warms just the
-     * session handshake, since that is two of the three requests an ad needs and
-     * does not depend on knowing where ads will appear. Both are best effort and
-     * neither can throw into the caller.
+     * No placement is needed: a card is identical whichever slot it lands in, so the
+     * one held here fills whichever placement appears first, and reports that slot
+     * when it is actually seen. Pass `prefetch: false` to opt out.
+     *
+     * Best effort — it cannot throw into the caller, and anything that fails is
+     * simply fetched on demand instead.
      */
     static configure(configuration) {
         const client = new client_1.CrossPromoClient(configuration, native_1.NativeCrossPromoPlatform, fetch);
         this.configuredClient = client;
-        const placements = configuration.prefetchPlacements ?? [];
-        if (placements.length > 0) {
-            for (const placement of placements) {
-                void client.prefetch(placement);
-            }
-        }
-        else if (configuration.warmUpSession !== false) {
-            // Prefetching already establishes the session, so only warm it separately
-            // when there is nothing to prefetch.
-            void client.warmUp();
-        }
+        if (configuration.prefetch !== false)
+            void client.prefetch();
     }
     static get client() {
         if (!this.configuredClient) {

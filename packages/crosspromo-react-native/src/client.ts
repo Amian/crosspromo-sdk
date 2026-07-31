@@ -67,15 +67,22 @@ export class CrossPromoClient {
   private sessionRequest?: Promise<Session>;
 
   /**
-   * Cards fetched ahead of being needed, keyed by placement.
+   * One card fetched ahead of being needed.
    *
-   * Cards are single use: each carries its own impression token, and the backend
-   * treats a repeated token as a replay. Handing one card to two placements would
-   * therefore silently drop the second impression, so taking a prefetched card
-   * removes it from here.
+   * A card is identical whichever slot it lands in — placement never affects which
+   * ad the backend picks — so a single held card can fill whichever placement
+   * appears first. It is single use, though: each carries its own impression token
+   * and the backend treats a repeat as a replay, so taking it removes it.
    */
-  private readonly prefetched = new Map<string, PromoCardData>();
-  private readonly prefetchRequests = new Map<string, Promise<void>>();
+  private prefetchedCard?: PromoCardData;
+  private prefetchRequest?: Promise<void>;
+
+  /**
+   * Which slot each card was handed to, so its impression and click can report
+   * where it was actually shown. Bounded: cards are short-lived and only a couple
+   * are ever in flight.
+   */
+  private readonly placementByCard = new Map<string, string>();
 
   constructor(
     configuration: CrossPromoConfiguration,
@@ -121,13 +128,12 @@ export class CrossPromoClient {
    * Safe to call repeatedly: concurrent calls for one placement share a single
    * fetch, and a placement that already holds a fresh card does nothing.
    */
-  prefetch(placement: CrossPromoPlacement): Promise<void> {
-    const key = placement;
-    const inflight = this.prefetchRequests.get(key);
+  prefetch(): Promise<void> {
+    const inflight = this.prefetchRequest;
     if (inflight) return inflight;
-    if (this.prefetched.has(key)) return Promise.resolve();
-    const request = this.runPrefetch(key, placement);
-    this.prefetchRequests.set(key, request);
+    if (this.prefetchedCard) return Promise.resolve();
+    const request = this.runPrefetch();
+    this.prefetchRequest = request;
     return request;
   }
 
@@ -143,14 +149,11 @@ export class CrossPromoClient {
     }
   }
 
-  private async runPrefetch(
-    key: string,
-    placement: CrossPromoPlacement,
-  ): Promise<void> {
+  private async runPrefetch(): Promise<void> {
     try {
-      const card = await this.requestCard(placement);
+      const card = await this.requestCard();
       if (card) {
-        this.prefetched.set(key, card);
+        this.prefetchedCard = card;
         // Pull the icon in too. Without this the card text would appear instantly
         // and the icon would still fade in a beat later.
         this.iconWarmer(card.iconUrl);
@@ -158,7 +161,7 @@ export class CrossPromoClient {
     } catch {
       // Swallowed: see prefetch's contract.
     } finally {
-      this.prefetchRequests.delete(key);
+      this.prefetchRequest = undefined;
     }
   }
 
@@ -170,36 +173,52 @@ export class CrossPromoClient {
         'placement must be a CrossPromoPlacement option',
       );
     }
-    const key = placement;
-    const ready = this.takePrefetched(key);
-    if (ready) return ready;
+    const ready = this.takePrefetched();
+    if (ready) return this.assign(ready, placement);
 
     // A prefetch already on the wire: wait for it rather than starting a second
     // identical request and wasting the impression the first one is holding.
-    const inflight = this.prefetchRequests.get(key);
+    const inflight = this.prefetchRequest;
     if (inflight) {
       await inflight;
-      const arrived = this.takePrefetched(key);
-      if (arrived) return arrived;
+      const arrived = this.takePrefetched();
+      if (arrived) return this.assign(arrived, placement);
     }
-    return this.requestCard(placement);
+    const fresh = await this.requestCard();
+    return fresh ? this.assign(fresh, placement) : null;
   }
 
-  private takePrefetched(key: string): PromoCardData | null {
-    const held = this.prefetched.get(key);
+  private takePrefetched(): PromoCardData | null {
+    const held = this.prefetchedCard;
     if (!held) return null;
-    this.prefetched.delete(key);
+    this.prefetchedCard = undefined;
     const remaining = held.expiresAt.getTime() - Date.now();
     return remaining > CrossPromoClient.cardMinimumRemainingMs ? held : null;
   }
 
-  private async requestCard(
+  /**
+   * Records which slot this card went to, so the impression and click that follow
+   * can say where it was really shown.
+   */
+  private assign(
+    card: PromoCardData,
     placement: CrossPromoPlacement,
-  ): Promise<PromoCardData | null> {
+  ): PromoCardData {
+    if (this.placementByCard.size >= 32) {
+      const oldest = this.placementByCard.keys().next().value;
+      if (oldest !== undefined) this.placementByCard.delete(oldest);
+    }
+    this.placementByCard.set(card.cardId, placement);
+    return card;
+  }
+
+  private async requestCard(): Promise<PromoCardData | null> {
     const session = await this.validSession();
+    // No placement: the backend returns the same card either way, and sending one
+    // here would tie this card to a slot before we know where it will be shown.
     const response = await this.post<{ card: CardWire | null }>(
       '/v1/cards',
-      { placement },
+      {},
       session.accessToken,
     );
     return response.card ? cardFromWire(response.card) : null;
@@ -212,6 +231,7 @@ export class CrossPromoClient {
   ): Promise<void> {
     if (visibleFraction < 0.5 || durationMs < 1_000) return;
     const session = await this.validSession();
+    const placement = this.placementByCard.get(card.cardId);
     await this.post(
       '/v1/events/impressions',
       {
@@ -221,6 +241,7 @@ export class CrossPromoClient {
           visible_fraction: Math.max(0, Math.min(1, visibleFraction)),
           duration_ms: Math.floor(durationMs),
         },
+        ...(placement !== undefined ? { placement } : undefined),
       },
       session.accessToken,
       randomId(),
@@ -229,7 +250,14 @@ export class CrossPromoClient {
   }
 
   async open(card: PromoCardData): Promise<void> {
-    await this.platform.openUrl(card.clickUrl);
+    // A click is a plain redirect with no body, so the slot travels on the link.
+    // The backend ignores this whenever the token already names a placement.
+    const placement = this.placementByCard.get(card.cardId);
+    const url =
+      placement === undefined
+        ? card.clickUrl
+        : appendQueryParam(card.clickUrl, 'placement', placement);
+    await this.platform.openUrl(url);
   }
 
   private async validSession(): Promise<Session> {
@@ -280,7 +308,7 @@ export class CrossPromoClient {
         version: app.version,
         build_number: app.build_number,
       },
-      sdk: { name: 'crosspromo-react-native', version: '0.3.5' },
+      sdk: { name: 'crosspromo-react-native', version: '0.3.6' },
     });
     const evidence = await this.platform.generateEvidence({
       challenge_base64: challenge.challenge_base64,
@@ -373,4 +401,12 @@ function cardFromWire(card: CardWire): PromoCardData {
 
 function randomId(): string {
   return `${Date.now().toString(16)}-${Math.random().toString(16).slice(2)}`;
+}
+
+// Appended rather than parsed and rebuilt: Hermes has no global URL without a
+// polyfill the SDK should not have to require, and appending is all that is
+// needed to preserve whatever query params clickUrl already carries.
+function appendQueryParam(url: string, key: string, value: string): string {
+  const separator = url.includes('?') ? '&' : '?';
+  return `${url}${separator}${encodeURIComponent(key)}=${encodeURIComponent(value)}`;
 }

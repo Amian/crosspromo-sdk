@@ -31,15 +31,21 @@ export declare class CrossPromoClient {
     private session?;
     private sessionRequest?;
     /**
-     * Cards fetched ahead of being needed, keyed by placement.
+     * One card fetched ahead of being needed.
      *
-     * Cards are single use: each carries its own impression token, and the backend
-     * treats a repeated token as a replay. Handing one card to two placements would
-     * therefore silently drop the second impression, so taking a prefetched card
-     * removes it from here.
+     * A card is identical whichever slot it lands in — placement never affects which
+     * ad the backend picks — so a single held card can fill whichever placement
+     * appears first. It is single use, though: each carries its own impression token
+     * and the backend treats a repeat as a replay, so taking it removes it.
      */
-    private readonly prefetched;
-    private readonly prefetchRequests;
+    private prefetchedCard?;
+    private prefetchRequest?;
+    /**
+     * Which slot each card was handed to, so its impression and click can report
+     * where it was actually shown. Bounded: cards are short-lived and only a couple
+     * are ever in flight.
+     */
+    private readonly placementByCard;
     constructor(configuration: CrossPromoConfiguration, platform: CrossPromoPlatform, fetcher: Fetch, iconWarmer?: CrossPromoIconWarmer);
     private readonly configuration;
     sessionStatus(): Promise<CrossPromoSessionStatus>;
@@ -56,7 +62,7 @@ export declare class CrossPromoClient {
      * Safe to call repeatedly: concurrent calls for one placement share a single
      * fetch, and a placement that already holds a fresh card does nothing.
      */
-    prefetch(placement: CrossPromoPlacement): Promise<void>;
+    prefetch(): Promise<void>;
     /**
      * Warms only the session handshake, for apps that want the credential ready
      * without holding a card that could go stale.
@@ -65,6 +71,11 @@ export declare class CrossPromoClient {
     private runPrefetch;
     fetchCard(placement: CrossPromoPlacement): Promise<PromoCardData | null>;
     private takePrefetched;
+    /**
+     * Records which slot this card went to, so the impression and click that follow
+     * can say where it was really shown.
+     */
+    private assign;
     private requestCard;
     recordImpression(card: PromoCardData, visibleFraction: number, durationMs: number): Promise<void>;
     open(card: PromoCardData): Promise<void>;
