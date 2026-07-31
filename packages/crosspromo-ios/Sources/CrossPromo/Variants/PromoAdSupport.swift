@@ -107,12 +107,11 @@ struct PromoPalette: Equatable, Sendable {
     }
 }
 
-/// The "AD" disclosure chip, optionally followed by a short qualifier such as
+/// The "Ad" disclosure chip, optionally followed by a short qualifier such as
 /// "Indie pick".
 struct PromoAdBadge: View {
     private let palette: PromoPalette
     private let detail: String?
-    @Environment(\.colorScheme) private var colorScheme
 
     init(palette: PromoPalette, detail: String? = nil) {
         self.palette = palette
@@ -121,15 +120,14 @@ struct PromoAdBadge: View {
 
     var body: some View {
         HStack(spacing: 6) {
-            Text("AD")
-                .font(.system(size: 9, weight: .heavy))
-                .kerning(0.8)
-                .foregroundStyle(palette.chipText(colorScheme))
-                .padding(.vertical, 2.5)
+            Text("Ad")
+                .font(.system(size: 10, weight: .medium))
+                .foregroundStyle(.tertiary)
+                .padding(.vertical, 1.5)
                 .padding(.horizontal, 5)
-                .background(
-                    RoundedRectangle(cornerRadius: 5, style: .continuous)
-                        .fill(palette.chipBackground(colorScheme))
+                .overlay(
+                    Capsule(style: .continuous)
+                        .strokeBorder(Color(uiColor: .separator).opacity(0.6), lineWidth: 0.5)
                 )
             if let detail {
                 Text(detail)

@@ -39,12 +39,13 @@ public struct CrossPromoAppShelf: View {
                 PromoAdBadge(palette: headerPalette)
                 Spacer(minLength: 0)
             }
-            HStack(alignment: .top, spacing: 12) {
+            HStack(alignment: .top, spacing: 14) {
                 ForEach(Array(entries.enumerated()), id: \.offset) { index, ad in
                     PromoShelfEntry(ad: ad, opensLinks: opensLinks)
                         .promoEntrance(delay: Double(index) * 0.05)
                 }
             }
+            .frame(maxWidth: .infinity)
         }
     }
 }
@@ -71,7 +72,7 @@ private struct PromoShelfEntry: View {
                 .lineLimit(2)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .frame(maxWidth: .infinity)
+        .frame(width: 84)
         .contentShape(Rectangle())
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Ad. \(ad.card.appName). \(ad.card.tagline)")

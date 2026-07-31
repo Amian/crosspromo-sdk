@@ -32,7 +32,7 @@ public struct CrossPromoWidgetTile: View {
                 palette: palette,
                 glow: true
             )
-            Spacer(minLength: 8)
+            Spacer(minLength: 4)
             VStack(alignment: .leading, spacing: 3) {
                 Text(ad.card.appName)
                     .font(.footnote.weight(.bold))
@@ -43,8 +43,8 @@ public struct CrossPromoWidgetTile: View {
                     .foregroundStyle(.secondary)
                     .lineLimit(2)
             }
-            .fixedSize(horizontal: false, vertical: true)
-            Spacer(minLength: 8)
+            .layoutPriority(1)
+            Spacer(minLength: 4)
             HStack(spacing: 3) {
                 Text("Get")
                     .font(.caption2.weight(.semibold))
@@ -59,6 +59,7 @@ public struct CrossPromoWidgetTile: View {
         .frame(width: 155, height: 155, alignment: .topLeading)
         .background(shape.fill(washGradient))
         .overlay(shape.strokeBorder(palette.hairline(colorScheme), lineWidth: 1))
+        .clipShape(shape)
         .contentShape(shape)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Ad. \(ad.card.appName). \(ad.card.tagline)")
