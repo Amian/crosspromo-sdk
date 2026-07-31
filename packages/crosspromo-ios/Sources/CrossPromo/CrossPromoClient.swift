@@ -3,6 +3,20 @@ import Foundation
 import FoundationNetworking
 #endif
 
+/// Pulls a card's icon into the cache before the card is shown.
+///
+/// Prefetching the card JSON alone still leaves the icon downloading at the moment
+/// the card appears, so it fades in a beat late. Warming it here means the bytes are
+/// already in `URLCache` when the card asks for them.
+public typealias CrossPromoIconWarmer = @Sendable (URL) -> Void
+
+/// Uses `URLSession.shared` — the same session the card loads its icon through — so
+/// the response lands in the cache the card actually reads. Deliberately silent: this
+/// runs when nothing is on screen, so a failure must never surface.
+func warmCrossPromoIcon(_ iconURL: URL) {
+    Task { _ = try? await URLSession.shared.data(from: iconURL) }
+}
+
 public actor CrossPromoClient {
     private struct Session: Sendable {
         let accessToken: String
@@ -25,6 +39,7 @@ public actor CrossPromoClient {
     private let configuration: CrossPromoConfiguration
     private let transport: any CrossPromoTransport
     private let deviceContext: any CrossPromoDeviceContextProviding
+    private let warmIcon: CrossPromoIconWarmer
     private var session: Session?
 
     /// The in-flight handshake, so simultaneous callers share one instead of each
@@ -44,16 +59,20 @@ public actor CrossPromoClient {
         self.configuration = configuration
         transport = URLSessionCrossPromoTransport(timeout: configuration.requestTimeout)
         deviceContext = AppleDeviceContextProvider()
+        warmIcon = warmCrossPromoIcon
     }
 
     init(
         configuration: CrossPromoConfiguration,
         transport: any CrossPromoTransport,
-        deviceContext: any CrossPromoDeviceContextProviding
+        deviceContext: any CrossPromoDeviceContextProviding,
+        iconWarmer: CrossPromoIconWarmer? = nil
     ) {
         self.configuration = configuration
         self.transport = transport
         self.deviceContext = deviceContext
+        // Default to a no-op in tests: the real warmer would hit the network.
+        warmIcon = iconWarmer ?? { _ in }
     }
 
     public func sessionStatus() async throws -> CrossPromoSessionStatus {
@@ -93,6 +112,9 @@ public actor CrossPromoClient {
         do {
             if let card = try await requestCard(placement: placement) {
                 prefetched[key] = card
+                // Pull the icon in too. Without this the card text would appear
+                // instantly and the icon would still fade in a beat later.
+                warmIcon(card.iconURL)
             }
         } catch {
             // Best effort: see prefetch's contract.
@@ -263,23 +285,36 @@ public enum CrossPromo {
     public nonisolated static let sdkVersion = "0.3.4"
     private static var configuredClient: CrossPromoClient?
 
-    /// `prefetchPlacements` warms the session and one card for each placement given,
-    /// in the background, so the first card the app shows appears without a network
-    /// wait. Pass the placements the app actually uses — a prefetched card is held
-    /// until something asks for it, and anything that fails is fetched on demand.
+    /// The session handshake is warmed in the background as soon as this is called.
+    /// It is two of the three requests an ad needs and does not depend on knowing
+    /// where ads will appear, so doing it here means the first card only ever waits
+    /// for its own fetch. Pass `warmUpSession: false` to opt out.
+    ///
+    /// `prefetchPlacements` goes further and fetches an actual card per placement, so
+    /// the first card appears with no network wait at all. Pass the placements the app
+    /// actually uses — a prefetched card is held until something asks for it, and
+    /// anything that fails is simply fetched on demand.
+    ///
+    /// Both are best effort and neither can throw into the caller.
     public static func configure(
         appKey: String,
         environment: CrossPromoConfiguration.Environment = .automatic,
-        prefetchPlacements: [CrossPromoPlacement] = []
+        prefetchPlacements: [CrossPromoPlacement] = [],
+        warmUpSession: Bool = true
     ) throws {
         let configuration = try CrossPromoConfiguration(appKey: appKey, environment: environment)
         let client = CrossPromoClient(configuration: configuration)
         configuredClient = client
-        guard !prefetchPlacements.isEmpty else { return }
-        Task {
-            for placement in prefetchPlacements {
-                await client.prefetch(placement: placement)
+        if !prefetchPlacements.isEmpty {
+            Task {
+                for placement in prefetchPlacements {
+                    await client.prefetch(placement: placement)
+                }
             }
+        } else if warmUpSession {
+            // Prefetching already establishes the session, so only warm it separately
+            // when there is nothing to prefetch.
+            Task { await client.warmUp() }
         }
     }
 

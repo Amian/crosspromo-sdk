@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:crosspromo_sdk/src/client.dart';
 import 'package:crosspromo_sdk/src/configuration.dart';
+import 'package:crosspromo_sdk/src/icon_warmer.dart';
 import 'package:crosspromo_sdk/src/models.dart';
 import 'package:crosspromo_sdk/src/platform_bridge.dart';
 import 'package:crosspromo_sdk/src/transport.dart';
@@ -185,6 +186,48 @@ void main() {
     expect(transport.cardRequestCount, 2);
   });
 
+  test('prefetching also warms the card icon', () async {
+    final transport = FakeTransport();
+    final warmed = <Uri>[];
+    final client = newClient(transport, iconWarmer: warmed.add);
+
+    await client.prefetch(placement: CrossPromoPlacement.postScan);
+
+    expect(warmed, [Uri.parse('https://cdn.example/icon.png')]);
+  });
+
+  test('a prefetch that returns no card warms nothing', () async {
+    final transport = FakeTransport(failCards: true);
+    final warmed = <Uri>[];
+    final client = newClient(transport, iconWarmer: warmed.add);
+
+    await client.prefetch(placement: CrossPromoPlacement.postScan);
+
+    expect(warmed, isEmpty);
+  });
+
+  test('an icon warmer that throws cannot break the prefetch', () async {
+    // The warmer touches the image cache, which needs a binding that may not exist
+    // wherever configure() was called. A failure there must not lose the card.
+    final transport = FakeTransport();
+    final client = newClient(
+      transport,
+      iconWarmer: (_) => throw StateError('no binding'),
+    );
+
+    await client.prefetch(placement: CrossPromoPlacement.postScan);
+    final card = await client.fetchCard(
+      placement: CrossPromoPlacement.postScan,
+    );
+
+    expect(
+      card?.cardId,
+      'c_1',
+      reason: 'the prefetched card survives a warmer failure',
+    );
+    expect(transport.cardRequestCount, 1);
+  });
+
   test('concurrent prefetches for one placement share a single fetch', () async {
     final transport = FakeTransport();
     final client = newClient(transport);
@@ -204,13 +247,20 @@ void main() {
   });
 }
 
-CrossPromoClient newClient(FakeTransport transport) => CrossPromoClient(
+CrossPromoClient newClient(
+  FakeTransport transport, {
+  CrossPromoIconWarmer? iconWarmer,
+}) =>
+    CrossPromoClient(
       CrossPromoConfiguration(
         appKey: 'cp_live_example',
         baseUri: Uri.parse('https://example.test'),
       ),
       transport: transport,
       platform: FakePlatform(),
+      // Default to a no-op: the real warmer touches the image cache, which needs a
+      // binding these plain unit tests do not set up.
+      iconWarmer: iconWarmer ?? (_) {},
     );
 
 class RequestRecord {

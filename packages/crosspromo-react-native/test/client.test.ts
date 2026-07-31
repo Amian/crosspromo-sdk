@@ -200,12 +200,55 @@ test('a failed prefetch stays silent and the card is fetched on demand', async (
   assert.equal(transport.cardRequestCount, 2);
 });
 
-function newClient(transport: FakeTransport): CrossPromoClient {
+test('prefetching also warms the card icon', async () => {
+  const transport = new FakeTransport();
+  const warmed: string[] = [];
+  const client = newClient(transport, (iconUrl) => warmed.push(iconUrl));
+
+  await client.prefetch(CrossPromoPlacement.PostScan);
+
+  assert.deepEqual(warmed, ['https://cdn.example/icon.png']);
+});
+
+test('a prefetch that returns no card warms nothing', async () => {
+  const transport = new FakeTransport({ failCards: true });
+  const warmed: string[] = [];
+  const client = newClient(transport, (iconUrl) => warmed.push(iconUrl));
+
+  await client.prefetch(CrossPromoPlacement.PostScan);
+
+  assert.deepEqual(warmed, []);
+});
+
+test('an icon warmer that throws cannot break the prefetch', async () => {
+  // The warmer touches the image cache, which needs a runtime that may not exist
+  // wherever configure() was called. A failure there must not lose the card.
+  const transport = new FakeTransport();
+  const client = newClient(transport, () => {
+    throw new Error('no image cache');
+  });
+
+  await client.prefetch(CrossPromoPlacement.PostScan);
+  const card = await client.fetchCard(CrossPromoPlacement.PostScan);
+
+  assert.equal(card?.cardId, 'c_1');
+  assert.equal(transport.cardRequestCount, 1);
+});
+
+function newClient(
+  transport: FakeTransport,
+  iconWarmer?: (iconUrl: string) => void,
+): CrossPromoClient {
   const configuration: CrossPromoConfiguration = {
     appKey: 'cp_live_example',
     baseUrl: 'https://example.test',
   };
-  return new CrossPromoClient(configuration, new FakePlatform(), transport.fetch);
+  return new CrossPromoClient(
+    configuration,
+    new FakePlatform(),
+    transport.fetch,
+    iconWarmer ?? (() => {}),
+  );
 }
 
 interface RequestRecord {

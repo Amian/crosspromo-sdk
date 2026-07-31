@@ -21,6 +21,13 @@ export interface CrossPromoConfiguration {
    * asks for it, and anything that fails is fetched on demand.
    */
   prefetchPlacements?: CrossPromoPlacement[];
+  /**
+   * Warms the session handshake in the background as soon as `configure` is
+   * called, so the first ad request only ever waits for its own card fetch.
+   * Defaults to true. Has no effect when `prefetchPlacements` is non-empty —
+   * prefetching already establishes the session.
+   */
+  warmUpSession?: boolean;
 }
 
 export interface PromoCardData {

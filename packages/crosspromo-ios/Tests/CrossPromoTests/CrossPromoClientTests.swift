@@ -160,6 +160,28 @@ struct CrossPromoClientTests {
         #expect(await transport.cardRequestCount == 2)
     }
 
+    @Test("prefetching also warms the card icon")
+    func prefetchWarmsIcon() async throws {
+        let transport = MockTransport()
+        let warmed = IconWarmRecorder()
+        let client = try makeClient(transport, iconWarmer: { url in warmed.record(url) })
+
+        await client.prefetch(placement: .postScan)
+
+        #expect(warmed.urls == [URL(string: "https://cdn.example/icon.png")!])
+    }
+
+    @Test("a prefetch that returns no card warms nothing")
+    func failedPrefetchWarmsNothing() async throws {
+        let transport = MockTransport(failCards: true)
+        let warmed = IconWarmRecorder()
+        let client = try makeClient(transport, iconWarmer: { url in warmed.record(url) })
+
+        await client.prefetch(placement: .postScan)
+
+        #expect(warmed.urls.isEmpty)
+    }
+
     @Test("concurrent prefetches for one placement share a single fetch")
     func concurrentPrefetchesShareOneFetch() async throws {
         let transport = MockTransport()
@@ -176,25 +198,50 @@ struct CrossPromoClientTests {
     }
 }
 
-private func makeClient(_ transport: MockTransport) throws -> CrossPromoClient {
+private func makeClient(
+    _ transport: MockTransport,
+    iconWarmer: CrossPromoIconWarmer? = nil
+) throws -> CrossPromoClient {
     CrossPromoClient(
         configuration: try CrossPromoConfiguration(
             appKey: "cp_live_example",
             environment: .custom(URL(string: "https://example.test")!)
         ),
         transport: transport,
-        deviceContext: MockDeviceContext()
+        deviceContext: MockDeviceContext(),
+        iconWarmer: iconWarmer
     )
+}
+
+/// The warmer is a plain synchronous @Sendable closure, so it cannot await an actor.
+private final class IconWarmRecorder: @unchecked Sendable {
+    private let lock = NSLock()
+    private var storage: [URL] = []
+
+    func record(_ url: URL) {
+        lock.lock()
+        storage.append(url)
+        lock.unlock()
+    }
+
+    var urls: [URL] {
+        lock.lock()
+        defer { lock.unlock() }
+        return storage
+    }
 }
 
 private actor MockTransport: CrossPromoTransport {
     /// How long each served card stays valid. Nil means the far future.
     private let cardLifetime: TimeInterval?
+    /// Makes `/v1/cards` fail, to prove a failed prefetch stays invisible.
+    private let failCards: Bool
     var requests: [URLRequest] = []
     private var cardsServed = 0
 
-    init(cardLifetime: TimeInterval? = nil) {
+    init(cardLifetime: TimeInterval? = nil, failCards: Bool = false) {
         self.cardLifetime = cardLifetime
+        self.failCards = failCards
     }
 
     var cardRequestCount: Int {
@@ -214,6 +261,11 @@ private actor MockTransport: CrossPromoTransport {
             json = #"{"session_id":"s_1","challenge_base64":"aGVsbG8=","integrity_mode":"app_transaction"}"#
         case "/v1/sdk/sessions/verify":
             json = #"{"access_token":"token","publisher_app_id":"app_1","counts_enabled":true,"reason":null,"expires_at":"2099-01-01T00:00:00Z"}"#
+        case "/v1/cards" where failCards:
+            let response = HTTPURLResponse(
+                url: request.url!, statusCode: 500, httpVersion: nil, headerFields: nil
+            )!
+            return (Data("{}".utf8), response)
         case "/v1/cards":
             cardsServed += 1
             let expiresAt: String

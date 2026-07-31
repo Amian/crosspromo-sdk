@@ -37,6 +37,26 @@ const PromoCard(placement: CrossPromoPlacement.postScan)
 
 Other typed options are `.result`, `.settings`, and `.emptyState`.
 
+## Making cards appear instantly
+
+Showing a card needs a session handshake and a card fetch. By default `configure`
+warms the handshake in the background, so a card only ever waits for its own fetch.
+
+To remove the wait entirely, name the placements the app uses and the card — icon
+included — is fetched and held before there is anywhere to show it:
+
+```dart
+CrossPromo.configure(
+  appKey: 'cp_live_your_public_app_key',
+  prefetchPlacements: [CrossPromoPlacement.postScan],
+);
+```
+
+Prefetching is best effort and never throws: if it fails, the card is fetched on
+demand exactly as before. A prefetched card is used once and is discarded rather
+than shown if it is close to expiring. Pass `warmUpSession: false` to opt out of
+the background handshake.
+
 The SDK automatically supplies the iOS bundle ID, version, and build number.
 
 ## Local mock previews

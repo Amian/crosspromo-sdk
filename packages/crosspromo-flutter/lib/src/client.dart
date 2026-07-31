@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'configuration.dart';
+import 'icon_warmer.dart';
 import 'models.dart';
 import 'platform_bridge.dart';
 import 'transport.dart';
@@ -23,9 +24,11 @@ class CrossPromoClient {
     this.configuration, {
     CrossPromoTransport? transport,
     CrossPromoPlatform? platform,
+    CrossPromoIconWarmer? iconWarmer,
   })  : _transport =
             transport ?? IoCrossPromoTransport(configuration.requestTimeout),
-        _platform = platform ?? MethodChannelCrossPromoPlatform();
+        _platform = platform ?? MethodChannelCrossPromoPlatform(),
+        _warmIcon = iconWarmer ?? warmCrossPromoIcon;
 
   /// A session this close to expiring is renewed before it is handed out, so a
   /// request can never be signed with a token that dies mid-flight.
@@ -43,6 +46,7 @@ class CrossPromoClient {
   final CrossPromoConfiguration configuration;
   final CrossPromoTransport _transport;
   final CrossPromoPlatform _platform;
+  final CrossPromoIconWarmer _warmIcon;
   _Session? _session;
   Future<_Session>? _sessionRequest;
 
@@ -93,7 +97,12 @@ class CrossPromoClient {
   Future<void> _runPrefetch(String key, CrossPromoPlacement placement) async {
     try {
       final card = await _requestCard(placement);
-      if (card != null) _prefetched[key] = card;
+      if (card != null) {
+        _prefetched[key] = card;
+        // Pull the icon in too. Without this the card text would appear instantly
+        // and the icon would still fade in a beat later.
+        _warmIcon(card.iconUrl);
+      }
     } on Object {
       // Swallowed: see prefetch's contract.
     } finally {
@@ -276,15 +285,23 @@ class _Session {
 abstract final class CrossPromo {
   static CrossPromoClient? _client;
 
-  /// [prefetchPlacements] warms the session and one card for each placement given,
-  /// in the background, so the first card the app shows appears without a network
-  /// wait. Pass the placements the app actually uses — a prefetched card is held
-  /// until something asks for it, and anything that fails is fetched on demand.
+  /// The session handshake is warmed in the background as soon as this is called.
+  /// It is two of the three requests an ad needs and does not depend on knowing
+  /// where ads will appear, so doing it here means the first card only ever waits
+  /// for its own fetch. Pass `warmUpSession: false` to opt out.
+  ///
+  /// [prefetchPlacements] goes further and fetches an actual card per placement, so
+  /// the first card appears with no network wait at all. Pass the placements the app
+  /// actually uses — a prefetched card is held until something asks for it, and
+  /// anything that fails is simply fetched on demand.
+  ///
+  /// Both are best effort and neither can throw into the caller.
   static void configure({
     required String appKey,
     CrossPromoEnvironment? environment,
     Uri? baseUri,
     Iterable<CrossPromoPlacement> prefetchPlacements = const [],
+    bool warmUpSession = true,
   }) {
     final client = CrossPromoClient(
       CrossPromoConfiguration(
@@ -294,8 +311,14 @@ abstract final class CrossPromo {
       ),
     );
     _client = client;
-    for (final placement in prefetchPlacements) {
+    final placements = prefetchPlacements.toList(growable: false);
+    for (final placement in placements) {
       unawaited(client.prefetch(placement: placement));
+    }
+    // Prefetching already establishes the session, so only warm it separately when
+    // there is nothing to prefetch.
+    if (warmUpSession && placements.isEmpty) {
+      unawaited(client.warmUp());
     }
   }
 

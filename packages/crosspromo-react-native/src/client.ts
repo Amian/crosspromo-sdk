@@ -1,3 +1,5 @@
+import { warmCrossPromoIcon } from './iconWarmer';
+import type { CrossPromoIconWarmer } from './iconWarmer';
 import { CrossPromoPlacement } from './types';
 import type {
   CrossPromoConfiguration,
@@ -79,6 +81,7 @@ export class CrossPromoClient {
     configuration: CrossPromoConfiguration,
     private readonly platform: CrossPromoPlatform,
     private readonly fetcher: Fetch,
+    private readonly iconWarmer: CrossPromoIconWarmer = warmCrossPromoIcon,
   ) {
     if (
       !configuration.appKey.startsWith('cp_live_') &&
@@ -146,7 +149,12 @@ export class CrossPromoClient {
   ): Promise<void> {
     try {
       const card = await this.requestCard(placement);
-      if (card) this.prefetched.set(key, card);
+      if (card) {
+        this.prefetched.set(key, card);
+        // Pull the icon in too. Without this the card text would appear instantly
+        // and the icon would still fade in a beat later.
+        this.iconWarmer(card.iconUrl);
+      }
     } catch {
       // Swallowed: see prefetch's contract.
     } finally {
