@@ -282,7 +282,7 @@ public actor CrossPromoClient {
 
 @MainActor
 public enum CrossPromo {
-    public nonisolated static let sdkVersion = "0.3.4"
+    public nonisolated static let sdkVersion = "0.3.5"
     private static var configuredClient: CrossPromoClient?
 
     /// The session handshake is warmed in the background as soon as this is called.

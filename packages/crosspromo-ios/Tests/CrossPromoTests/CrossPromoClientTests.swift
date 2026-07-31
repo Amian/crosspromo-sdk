@@ -50,7 +50,7 @@ struct CrossPromoClientTests {
         let sdk = try #require(challengeJSON["sdk"] as? [String: Any])
         #expect(app["bundle_id"] as? String == "app.example.publisher")
         #expect(app["version"] as? String == "3.2.1")
-        #expect(sdk["version"] as? String == "0.3.4")
+        #expect(sdk["version"] as? String == "0.3.5")
         #expect(challengeJSON["installation_id"] == nil)
         #expect(challengeJSON["locale"] == nil)
         #expect(challengeJSON["integrity"] == nil)
@@ -160,6 +160,40 @@ struct CrossPromoClientTests {
         #expect(await transport.cardRequestCount == 2)
     }
 
+    @Test("session and card timestamps decode with or without fractional seconds")
+    func decodesBackendTimestamps() throws {
+        // The Node backend sends `new Date().toISOString()`, which ALWAYS carries
+        // milliseconds. JSONDecoder's built-in .iso8601 strategy rejects those, so
+        // every real session response failed to decode and no session could ever be
+        // established. Every fixture here previously used whole seconds, which is
+        // exactly why that went unnoticed.
+        struct Stamped: Decodable { let expiresAt: Date }
+        func decode(_ text: String) throws -> Date {
+            try CrossPromoCoding.decoder
+                .decode(Stamped.self, from: Data(#"{"expiresAt":"\#(text)"}"#.utf8))
+                .expiresAt
+        }
+
+        // Both shapes must parse, and must agree on the instant they describe.
+        let withMilliseconds = try decode("2026-07-31T00:37:25.742Z")
+        let wholeSeconds = try decode("2026-07-31T00:37:25Z")
+        #expect(abs(withMilliseconds.timeIntervalSince(wholeSeconds) - 0.742) < 0.01)
+
+        // And a garbage value must still be rejected rather than silently accepted.
+        #expect(throws: (any Error).self) { try decode("not-a-date") }
+    }
+
+    @Test("a card served with millisecond timestamps is usable end to end")
+    func cardWithFractionalTimestamps() async throws {
+        let transport = MockTransport(fractionalTimestamps: true)
+        let client = try makeClient(transport)
+
+        let card = try #require(await client.fetchCard(placement: .postScan))
+
+        #expect(card.cardID == "c_1")
+        #expect(await transport.requestCount(for: "/v1/cards") == 1)
+    }
+
     @Test("prefetching also warms the card icon")
     func prefetchWarmsIcon() async throws {
         let transport = MockTransport()
@@ -236,12 +270,23 @@ private actor MockTransport: CrossPromoTransport {
     private let cardLifetime: TimeInterval?
     /// Makes `/v1/cards` fail, to prove a failed prefetch stays invisible.
     private let failCards: Bool
+    /// Emits timestamps the way the Node backend really does, with milliseconds.
+    private let fractionalTimestamps: Bool
     var requests: [URLRequest] = []
     private var cardsServed = 0
 
-    init(cardLifetime: TimeInterval? = nil, failCards: Bool = false) {
+    init(
+        cardLifetime: TimeInterval? = nil,
+        failCards: Bool = false,
+        fractionalTimestamps: Bool = false
+    ) {
         self.cardLifetime = cardLifetime
         self.failCards = failCards
+        self.fractionalTimestamps = fractionalTimestamps
+    }
+
+    private var farFuture: String {
+        fractionalTimestamps ? "2099-01-01T00:00:00.742Z" : "2099-01-01T00:00:00Z"
     }
 
     var cardRequestCount: Int {
@@ -260,7 +305,10 @@ private actor MockTransport: CrossPromoTransport {
         case "/v1/sdk/sessions/challenge":
             json = #"{"session_id":"s_1","challenge_base64":"aGVsbG8=","integrity_mode":"app_transaction"}"#
         case "/v1/sdk/sessions/verify":
-            json = #"{"access_token":"token","publisher_app_id":"app_1","counts_enabled":true,"reason":null,"expires_at":"2099-01-01T00:00:00Z"}"#
+            json = """
+            {"access_token":"token","publisher_app_id":"app_1","counts_enabled":true,\
+            "reason":null,"expires_at":"\(farFuture)"}
+            """
         case "/v1/cards" where failCards:
             let response = HTTPURLResponse(
                 url: request.url!, statusCode: 500, httpVersion: nil, headerFields: nil
@@ -274,7 +322,7 @@ private actor MockTransport: CrossPromoTransport {
                     from: Date().addingTimeInterval(cardLifetime)
                 )
             } else {
-                expiresAt = "2099-01-01T00:00:00Z"
+                expiresAt = farFuture
             }
             json = """
             {"card":{"card_id":"c_\(cardsServed)","app_name":"Rock Finder",\

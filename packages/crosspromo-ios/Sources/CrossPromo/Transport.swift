@@ -40,9 +40,40 @@ enum CrossPromoCoding {
         return encoder
     }()
 
+    /// Timestamps arrive from a Node backend, where `toISOString()` always includes
+    /// milliseconds ("2026-07-31T00:37:25.742Z"). `JSONDecoder.dateDecodingStrategy
+    /// .iso8601` uses `.withInternetDateTime` only, which REJECTS fractional seconds
+    /// on Apple's Foundation — so every session response failed to decode and the SDK
+    /// could never establish a session. Accept both shapes.
+    // `nonisolated(unsafe)` because ISO8601DateFormatter is not marked Sendable, but is
+    // documented as safe to use concurrently for parsing, and these are configured once
+    // here and never mutated afterwards.
+    private nonisolated(unsafe) static let iso8601WithFractionalSeconds: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter
+    }()
+
+    private nonisolated(unsafe) static let iso8601Whole: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter
+    }()
+
     static let decoder: JSONDecoder = {
         let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
+        decoder.dateDecodingStrategy = .custom { decoder in
+            let container = try decoder.singleValueContainer()
+            let text = try container.decode(String.self)
+            if let date = iso8601WithFractionalSeconds.date(from: text)
+                ?? iso8601Whole.date(from: text) {
+                return date
+            }
+            throw DecodingError.dataCorruptedError(
+                in: container,
+                debugDescription: "Expected an ISO-8601 date, got \(text)"
+            )
+        }
         return decoder
     }()
 }

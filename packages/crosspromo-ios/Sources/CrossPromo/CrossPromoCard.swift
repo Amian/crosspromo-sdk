@@ -405,6 +405,12 @@ public final class CrossPromoCardUIView: UIView {
             NSLayoutConstraint.activate(expandedLayoutConstraints)
         }
         isHidden = collapsed
+        // A card's text arrives after SwiftUI has already measured this view — it is
+        // empty at that point, so the height it settled on is too short and the app
+        // name gets clipped once real copy lands. Telling UIKit the intrinsic size is
+        // stale is what makes SwiftUI ask for a new one.
+        invalidateIntrinsicContentSize()
+        superview?.setNeedsLayout()
     }
 
     private func loadIcon(from url: URL) {
