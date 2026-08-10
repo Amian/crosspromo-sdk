@@ -39,6 +39,6 @@ class CrossPromoConfiguration {
       switch (environment) {
         CrossPromoEnvironment.production ||
         CrossPromoEnvironment.sandbox =>
-          Uri.parse('https://backend-j5mh.onrender.com'),
+          Uri.parse('https://api.promotethatapp.com'),
       };
 }

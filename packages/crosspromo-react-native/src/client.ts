@@ -101,7 +101,7 @@ export class CrossPromoClient {
     this.configuration = configuration;
     this.baseUrl = (
       configuration.baseUrl ??
-      'https://backend-j5mh.onrender.com'
+      'https://api.promotethatapp.com'
     ).replace(/\/$/, '');
     this.timeoutMs = configuration.requestTimeoutMs ?? 10_000;
     if (this.timeoutMs <= 0) {
@@ -307,7 +307,7 @@ export class CrossPromoClient {
         version: app.version,
         build_number: app.build_number,
       },
-      sdk: { name: 'crosspromo-react-native', version: '0.3.6' },
+      sdk: { name: 'crosspromo-react-native', version: '0.3.7' },
     });
     const evidence = await this.platform.generateEvidence({
       challenge_base64: challenge.challenge_base64,

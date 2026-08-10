@@ -70,7 +70,7 @@ void main() {
     );
     expect(app['bundle_id'], 'app.example.publisher');
     expect(app['version'], '3.2.1');
-    expect(sdk['version'], '0.3.6');
+    expect(sdk['version'], '0.3.7');
     expect(
         transport.requests.first.body.containsKey('installation_id'), isFalse);
     expect(transport.requests.first.body.containsKey('locale'), isFalse);

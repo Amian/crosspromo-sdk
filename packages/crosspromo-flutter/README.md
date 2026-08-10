@@ -2,9 +2,8 @@
 
 CrossPromo currently supports Flutter apps on iOS only.
 
-Version `0.3.4` automatically uses sandbox for debug builds and production for release
-builds while retaining the icon-derived colors and responsive sizing introduced in
-`0.3.2`.
+Version `0.3.7` calls the SDK API at its own hostname, and automatically uses sandbox
+for debug builds and production for release builds.
 
 ## Install
 

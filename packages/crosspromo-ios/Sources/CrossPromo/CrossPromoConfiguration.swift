@@ -23,7 +23,7 @@ public struct CrossPromoConfiguration: Sendable {
         var baseURL: URL {
             switch resolved {
             case .production, .sandbox:
-                URL(string: "https://backend-j5mh.onrender.com")!
+                URL(string: "https://api.promotethatapp.com")!
             case let .custom(url):
                 url
             case .automatic:

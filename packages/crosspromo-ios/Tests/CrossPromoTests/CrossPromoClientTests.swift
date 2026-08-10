@@ -50,7 +50,7 @@ struct CrossPromoClientTests {
         let sdk = try #require(challengeJSON["sdk"] as? [String: Any])
         #expect(app["bundle_id"] as? String == "app.example.publisher")
         #expect(app["version"] as? String == "3.2.1")
-        #expect(sdk["version"] as? String == "0.3.6")
+        #expect(sdk["version"] as? String == "0.3.7")
         #expect(challengeJSON["installation_id"] == nil)
         #expect(challengeJSON["locale"] == nil)
         #expect(challengeJSON["integrity"] == nil)
