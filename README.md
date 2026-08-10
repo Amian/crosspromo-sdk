@@ -203,4 +203,6 @@ cd packages/crosspromo-flutter && flutter analyze && flutter test
 cd packages/crosspromo-react-native && npm install && npm run typecheck && npm test
 ```
 
-Licensed under the [MIT License](LICENSE).
+Source is available under the [CrossPromo SDK Source-Available License](LICENSE).
+You may use the unmodified SDK only with the official CrossPromo Service; modification
+and use with any other service require CrossPromo's prior written permission.

@@ -31,7 +31,7 @@
     "tsx": "^4.19.0",
     "typescript": "^5.7.0"
   },
-  "license": "MIT",
+  "license": "SEE LICENSE IN LICENSE",
   "publishConfig": {
     "access": "public"
   }
