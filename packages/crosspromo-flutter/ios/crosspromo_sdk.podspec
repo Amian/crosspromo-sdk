@@ -4,7 +4,7 @@ Pod::Spec.new do |s|
   s.summary          = 'CrossPromo Flutter iOS bridge.'
   s.description      = 'Provides Apple App Transaction evidence to CrossPromo.'
   s.homepage         = 'https://github.com/Amian/crosspromo-sdk'
-  s.license          = { :type => 'MIT' }
+  s.license          = { :type => 'Proprietary', :file => '../LICENSE' }
   s.author           = { 'CrossPromo' => 'sdk@crosspromo.app' }
   s.source           = { :path => '.' }
   s.source_files     = 'Classes/**/*'

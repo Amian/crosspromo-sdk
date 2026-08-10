@@ -7,7 +7,7 @@ Pod::Spec.new do |s|
   s.version      = package['version']
   s.summary      = package['description']
   s.homepage     = 'https://github.com/Amian/crosspromo-sdk'
-  s.license      = package['license']
+  s.license      = { :type => 'Proprietary', :file => 'LICENSE' }
   s.author       = { 'CrossPromo' => 'sdk@crosspromo.app' }
   s.source       = { :path => '.' }
   s.source_files = 'ios/**/*.{h,m,mm,swift}'
