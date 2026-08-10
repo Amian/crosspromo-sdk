@@ -25,16 +25,7 @@ The color system swept across six icon hues in both themes. Same math, six
 icons. Yellow triggers the dark-ink CTA; the grayscale icon falls back to the
 neutral palette with the system CTA color.
 
-## How the color is picked
-
-Weighted dominant-hue extraction (not an average, which would give mud), shared
-across iOS, Flutter, and React Native:
-
-1. Sample the icon small (32×32 native, ~4096 pixels on Flutter).
-2. Discard transparent, near-black, gray, and near-white pixels.
-3. Bucket surviving pixels into 12 hue bins.
-4. Weight each pixel by `saturation² × value`, so vivid, luminous pixels
-   dominate.
-5. The heaviest bucket wins; average its RGB and clamp saturation to 0.55–0.85.
-6. If the winner is too small a share of the icon, return nothing — the card
-   uses the refined neutral palette instead.
+The accent is derived from the icon's dominant color rather than an average, so
+the result stays vivid instead of turning to mud, and an icon with no usable
+color falls back to the refined neutral palette. The same derivation runs on
+iOS, Flutter, and React Native, so a card looks identical on all three.

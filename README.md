@@ -172,17 +172,12 @@ For both, select **Third-Party Advertising** and **Analytics**, then answer **No
 
 [See the exact click-by-click privacy guide](APP_STORE_PRIVACY.md).
 
-## How counting is protected
+## How counting works
 
-The app cannot decide whether an impression or click counts.
-
-- iOS sessions provide an Apple-signed App Transaction.
-- The backend verifies its signature, production environment, bundle ID, Apple app ID,
-  and released version.
-- The backend also confirms that the app is currently public in the App Store.
-- Impressions use single-use server tokens and require 50% visibility for one second.
-- Clicks count only through a signed server redirect. There is no client-side
-  `recordClick()` function.
+The app cannot decide whether an impression or click counts. Every event is verified
+server-side against the app's live App Store release, and the API makes the final
+decision. Anything the host app reports is treated as a claim to be checked, not as a
+count.
 
 Debug builds, StoreKit testing, simulators, TestFlight, and sandbox activity never earn
 eligibility or counted activity. Google Play support is deliberately outside the v1

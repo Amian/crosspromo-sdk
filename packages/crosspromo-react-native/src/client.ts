@@ -71,8 +71,8 @@ export class CrossPromoClient {
    *
    * A card is identical whichever slot it lands in — placement never affects which
    * ad the backend picks — so a single held card can fill whichever placement
-   * appears first. It is single use, though: each carries its own impression token
-   * and the backend treats a repeat as a replay, so taking it removes it.
+   * appears first. It is single use, though — one card is one ad — so taking it
+   * removes it.
    */
   private prefetchedCard?: PromoCardData;
   private prefetchRequest?: Promise<void>;
@@ -251,7 +251,6 @@ export class CrossPromoClient {
 
   async open(card: PromoCardData): Promise<void> {
     // A click is a plain redirect with no body, so the slot travels on the link.
-    // The backend ignores this whenever the token already names a placement.
     const placement = this.placementByCard.get(card.cardId);
     const url =
       placement === undefined

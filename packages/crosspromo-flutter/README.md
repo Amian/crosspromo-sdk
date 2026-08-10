@@ -73,11 +73,13 @@ available for unusual testing, but do not ship an explicit sandbox override.
 
 ## Custom UI
 
-Use `CrossPromo.client.fetchCard(placement: CrossPromoPlacement.postScan)`, wrap your UI
-in `CrossPromoImpressionObserver(card: card, child: ...)`, and call
-`CrossPromo.client.open(card)` on tap. The observer enforces the 50%-for-one-second SDK
-threshold. The API additionally validates the single-use impression token and signed
-click redirect.
+`PromoCard` is the supported integration and the one to use. If a design genuinely
+cannot use it, fetch with
+`CrossPromo.client.fetchCard(placement: CrossPromoPlacement.postScan)`, wrap your UI in
+`CrossPromoImpressionObserver(card: card, child: ...)` so the ad is measured and
+reported for you, and call `CrossPromo.client.open(card)` on tap. Reporting an ad the
+user did not actually see is a violation of the network terms; the API decides what
+counts.
 
 ## Privacy
 

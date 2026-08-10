@@ -68,17 +68,18 @@ try CrossPromo.configure(
 Sandbox activity is visibly marked in the dashboard and never counts. Explicit
 environment overrides remain available for unusual testing, but do not ship an explicit
 sandbox override.
-Production counting is decided by the API after validating the Apple-signed App
-Transaction, the registered app identity and version, and the live App Store listing.
-A missing or sandbox App Transaction cannot count. CrossPromo does not require
+Production counting is decided by the API, not by the app, and a sandbox session can
+never count. CrossPromo does not require
 an App Attest capability or an in-app purchase product.
 
 ## Custom UI
 
-Fetch data with `try await CrossPromo.client.fetchCard(placement: .postScan)`. If you
-render it yourself, call `recordImpression(for:visibleFraction:duration:)` only after at
-least 50% has been continuously visible for one second. The server still validates the
-single-use impression token. Open `card.clickURL` when the card is tapped.
+`CrossPromoCard` is the supported integration and the one to use: it measures and
+reports the ad on its own, so nothing else has to be wired up. If a design genuinely
+cannot use it, fetch the data with
+`try await CrossPromo.client.fetchCard(placement: .postScan)` and open `card.clickURL`
+when the card is tapped. Reporting an ad the user did not actually see is a violation of
+the network terms; the API decides what counts.
 
 ## Privacy
 

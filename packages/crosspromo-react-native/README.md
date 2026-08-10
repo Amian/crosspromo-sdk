@@ -67,9 +67,12 @@ unusual testing, but do not ship an explicit sandbox override.
 
 ## Custom UI
 
-Fetch with `CrossPromo.client.fetchCard(CrossPromoPlacement.PostScan)`, wrap your design
-in `<CrossPromoImpressionView card={card}>...</CrossPromoImpressionView>`, and call
-`CrossPromo.client.open(card)` on press. Clicks are counted only by the signed redirect.
+`PromoCard` is the supported integration and the one to use. If a design genuinely
+cannot use it, fetch with `CrossPromo.client.fetchCard(CrossPromoPlacement.PostScan)`,
+wrap your design in `<CrossPromoImpressionView card={card}>...</CrossPromoImpressionView>`
+so the ad is measured and reported for you, and call `CrossPromo.client.open(card)` on
+press. Reporting an ad the user did not actually see is a violation of the network
+terms; the API decides what counts.
 
 ## Privacy
 

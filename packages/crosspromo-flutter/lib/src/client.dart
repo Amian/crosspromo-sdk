@@ -54,8 +54,8 @@ class CrossPromoClient {
   ///
   /// A card is identical whichever slot it lands in — placement never affects which
   /// ad the backend picks — so a single held card can fill whichever placement
-  /// appears first. It is single use, though: each carries its own impression token
-  /// and the backend treats a repeat as a replay, so taking it removes it.
+  /// appears first. It is single use, though — one card is one ad — so taking it
+  /// removes it.
   PromoCardData? _prefetchedCard;
   Future<void>? _prefetchRequest;
 
@@ -187,7 +187,6 @@ class CrossPromoClient {
 
   Future<void> open(PromoCardData card) {
     // A click is a plain redirect with no body, so the slot travels on the link.
-    // The backend ignores this whenever the token already names a placement.
     final placement = _placementByCard[card.cardId];
     final url = placement == null
         ? card.clickUrl

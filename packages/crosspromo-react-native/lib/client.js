@@ -155,7 +155,6 @@ class CrossPromoClient {
     }
     async open(card) {
         // A click is a plain redirect with no body, so the slot travels on the link.
-        // The backend ignores this whenever the token already names a placement.
         const placement = this.placementByCard.get(card.cardId);
         const url = placement === undefined
             ? card.clickUrl

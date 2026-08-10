@@ -186,9 +186,7 @@ struct APIErrorBody: Codable, Sendable {
     let message: String?
 }
 
-/// A click is a plain redirect with no body, so the slot travels on the link. The
-/// backend ignores this whenever the signed token already names a placement, so SDKs
-/// up to 0.3.5 keep their server-attested value.
+/// A click is a plain redirect with no body, so the slot travels on the link.
 ///
 /// Lives here rather than beside the card view so it is Foundation-only and can be
 /// tested on any platform — the card view is compiled out where UIKit is absent.
