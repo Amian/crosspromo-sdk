@@ -27,5 +27,5 @@ neutral palette with the system CTA color.
 
 The accent is derived from the icon's dominant color rather than an average, so
 the result stays vivid instead of turning to mud, and an icon with no usable
-color falls back to the refined neutral palette. The same derivation runs on
-iOS, Flutter, and React Native, so a card looks identical on all three.
+color falls back to the refined neutral palette. The same derivation runs in
+the native iOS and macOS cards, Flutter on iOS, and React Native on iOS.

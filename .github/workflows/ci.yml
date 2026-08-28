@@ -9,13 +9,15 @@ permissions:
   contents: read
 
 jobs:
-  native-ios:
+  native-apple:
     runs-on: macos-15
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - run: plutil -lint packages/crosspromo-ios/Sources/CrossPromo/PrivacyInfo.xcprivacy packages/crosspromo-flutter/ios/PrivacyInfo.xcprivacy packages/crosspromo-react-native/ios/PrivacyInfo.xcprivacy
+      - run: swift build
       - run: swift test
+      - run: swift build --triple arm64-apple-ios16.0-simulator --sdk "$(xcrun --sdk iphonesimulator --show-sdk-path)"
 
   flutter-ios:
     runs-on: macos-15

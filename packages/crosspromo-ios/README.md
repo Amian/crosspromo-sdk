@@ -1,7 +1,7 @@
-# CrossPromo for iOS
+# CrossPromo for Apple platforms
 
-Native Swift SDK for iOS 16+, distributed with Swift Package Manager. It has no
-third-party runtime dependencies.
+Native Swift SDK for iOS 16+ and macOS 13+, distributed with Swift Package Manager.
+It has no third-party runtime dependencies.
 
 ## Install
 
@@ -32,6 +32,17 @@ Drop the SwiftUI card where a recommendation fits naturally:
 CrossPromoCard(placement: .postScan)
 ```
 
+UIKit and AppKit integrations use the matching native view:
+
+```swift
+let iOSCard = CrossPromoCardUIView(placement: .settings)
+let macCard = CrossPromoCardNSView(placement: .settings)
+```
+
+Those two concrete view types are platform-specific; `CrossPromoCard` has the same
+SwiftUI initializer on iOS and macOS. Sandboxed Mac apps must enable the **Outgoing
+Connections (Client)** capability in the host app target.
+
 ## Making cards appear instantly
 
 `configure` fetches everything an ad needs — the session handshake, one card, and its
@@ -50,9 +61,11 @@ card is fetched on demand exactly as before. Pass `prefetch: false` to opt out.
 ## Local mock previews
 
 Use `CrossPromoCardPreview(card:icon:accentColor:)` in SwiftUI, or call
-`displayPreview(card:icon:accentColor:)` on `CrossPromoCardUIView`, to exercise the
-production card presentation with local data. Preview cards do not contact the backend,
-open links, or report impressions. Production integrations should use `CrossPromoCard`.
+`displayPreview(card:icon:accentColor:)` on `CrossPromoCardUIView` or
+`CrossPromoCardNSView`, to exercise the production card presentation with local data.
+The preview accepts `UIImage`/`UIColor` on iOS and `NSImage`/`NSColor` on macOS. Preview
+cards do not contact the backend, open links, or report impressions. Production
+integrations should use `CrossPromoCard`.
 
 ## Test before release
 
@@ -69,8 +82,10 @@ Sandbox activity is visibly marked in the dashboard and never counts. Explicit
 environment overrides remain available for unusual testing, but do not ship an explicit
 sandbox override.
 Production counting is decided by the API, not by the app, and a sandbox session can
-never count. CrossPromo does not require
-an App Attest capability or an in-app purchase product.
+never count. Debug, local, TestFlight, and direct-distributed Mac builds do not establish
+counting eligibility. A native Mac integration requires a public Mac App Store release
+registered with the CrossPromo service. CrossPromo does not require an App Attest
+capability or an in-app purchase product.
 
 ## Custom UI
 
