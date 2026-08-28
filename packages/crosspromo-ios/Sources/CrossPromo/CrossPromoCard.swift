@@ -562,6 +562,7 @@ public struct CrossPromoCardPreview: UIViewRepresentable {
     }
 }
 
+@MainActor
 private func fittingSize(
     for proposal: ProposedViewSize,
     uiView: CrossPromoCardUIView

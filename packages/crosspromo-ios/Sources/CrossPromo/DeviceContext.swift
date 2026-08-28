@@ -14,8 +14,13 @@ actor AppleDeviceContextProvider: CrossPromoDeviceContextProviding {
     }
 
     func snapshot() async throws -> DeviceSnapshot {
+        #if os(macOS)
+        let platform = "macos"
+        #else
+        let platform = "ios"
+        #endif
         let app = AppDescriptor(
-            platform: "ios",
+            platform: platform,
             bundleID: bundle.bundleIdentifier ?? "unknown",
             version: bundle.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0",
             buildNumber: bundle.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "0"
