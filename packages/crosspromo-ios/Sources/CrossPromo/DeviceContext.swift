@@ -8,10 +8,12 @@ protocol CrossPromoDeviceContextProviding: Sendable {
 
 enum CrossPromoRuntimePlatform {
     static var identifier: String {
-        #if os(iOS)
-        "ios"
-        #elseif os(macOS)
+        #if os(macOS)
         "macos"
+        #elseif canImport(UIKit)
+        // Preserve the SDK's existing UIKit-family wire value. A future native
+        // service identifier can be introduced here without changing consumers.
+        "ios"
         #else
         #error("CrossPromo needs an explicit platform identifier before enabling a new platform")
         #endif

@@ -8,6 +8,7 @@
 #if os(macOS)
 import AppKit
 import Foundation
+import SwiftUI
 import Testing
 @testable import CrossPromo
 
@@ -54,6 +55,7 @@ struct CrossPromoMacOSTests {
     func swiftUIFacadePreservesPublicAPI() {
         let facade = CrossPromoCard(placement: .settings)
 
+        requireNativeRepresentable(facade)
         #expect(facade.placement == .settings)
         #expect(facade.onError == nil)
     }
@@ -145,6 +147,15 @@ struct CrossPromoMacOSTests {
                 continuation.resume()
             }
         }
+    }
+
+    @MainActor
+    private func requireNativeRepresentable<T: NSViewRepresentable>(_ value: T)
+    where T.NSViewType == CrossPromoCardNSView {
+        let make = value.makeNSView
+        let update = value.updateNSView
+        let size = value.sizeThatFits
+        _ = (make, update, size)
     }
 }
 #endif

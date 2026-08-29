@@ -594,40 +594,54 @@ private final class MacViewabilityTracker {
     }
 }
 
-struct CrossPromoPlatformCard: NSViewRepresentable {
-    let placement: CrossPromoPlacement
-    var onError: ((Error) -> Void)?
-    let onHeightChange: (CGFloat) -> Void
+public struct CrossPromoCard: NSViewRepresentable {
+    public let placement: CrossPromoPlacement
+    public var onError: ((Error) -> Void)?
 
-    init(
-        placement: CrossPromoPlacement,
-        onError: ((Error) -> Void)?,
-        onHeightChange: @escaping (CGFloat) -> Void
-    ) {
+    @State private var preferredHeight: CGFloat = 0
+    @State private var measuredPlacement: CrossPromoPlacement?
+
+    public init(placement: CrossPromoPlacement, onError: ((Error) -> Void)? = nil) {
         self.placement = placement
         self.onError = onError
-        self.onHeightChange = onHeightChange
     }
 
-    func makeNSView(context: Context) -> CrossPromoCardNSView {
+    public func makeNSView(context: Context) -> CrossPromoCardNSView {
         let view = CrossPromoCardNSView(placement: placement)
         view.onError = onError
-        view.onPreferredHeightChange = onHeightChange
+        connectHeightReporting(to: view)
         return view
     }
 
-    func updateNSView(_ nsView: CrossPromoCardNSView, context: Context) {
+    public func updateNSView(_ nsView: CrossPromoCardNSView, context: Context) {
         nsView.onError = onError
-        nsView.onPreferredHeightChange = onHeightChange
+        connectHeightReporting(to: nsView)
         if nsView.placement != placement { nsView.placement = placement }
     }
 
-    func sizeThatFits(
+    public func sizeThatFits(
         _ proposal: ProposedViewSize,
         nsView: CrossPromoCardNSView,
         context: Context
     ) -> CGSize? {
-        fittingSize(for: proposal, nsView: nsView)
+        guard let width = proposal.width else { return nil }
+        guard measuredPlacement == placement, preferredHeight > 0 else {
+            return CGSize(width: width, height: 0)
+        }
+        return fittingSize(for: proposal, nsView: nsView)
+    }
+
+    private func connectHeightReporting(to view: CrossPromoCardNSView) {
+        let preferredHeight = $preferredHeight
+        let measuredPlacement = $measuredPlacement
+        let placement = placement
+        view.onPreferredHeightChange = { height in
+            let normalizedHeight = max(0, height)
+            guard measuredPlacement.wrappedValue != placement
+                    || abs(normalizedHeight - preferredHeight.wrappedValue) > 0.5 else { return }
+            measuredPlacement.wrappedValue = placement
+            preferredHeight.wrappedValue = normalizedHeight
+        }
     }
 }
 

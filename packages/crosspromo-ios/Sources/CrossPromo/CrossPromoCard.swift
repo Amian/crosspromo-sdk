@@ -1,4 +1,4 @@
-#if os(iOS)
+#if canImport(UIKit)
 import SwiftUI
 import UIKit
 
@@ -419,8 +419,8 @@ public final class CrossPromoCardUIView: UIView {
         }
         isHidden = collapsed
         // A card's text arrives after SwiftUI has already measured this view. The
-        // shared SwiftUI facade owns the resulting explicit height; native clients
-        // still benefit from intrinsic-size invalidation.
+        // representable owns the resulting explicit height; native clients still
+        // benefit from intrinsic-size invalidation.
         invalidateIntrinsicContentSize()
         superview?.setNeedsLayout()
         schedulePreferredHeightReport()
@@ -546,40 +546,54 @@ private final class ViewabilityTracker {
     }
 }
 
-struct CrossPromoPlatformCard: UIViewRepresentable {
-    let placement: CrossPromoPlacement
-    var onError: ((Error) -> Void)?
-    let onHeightChange: (CGFloat) -> Void
+public struct CrossPromoCard: UIViewRepresentable {
+    public let placement: CrossPromoPlacement
+    public var onError: ((Error) -> Void)?
 
-    init(
-        placement: CrossPromoPlacement,
-        onError: ((Error) -> Void)?,
-        onHeightChange: @escaping (CGFloat) -> Void
-    ) {
+    @State private var preferredHeight: CGFloat = 0
+    @State private var measuredPlacement: CrossPromoPlacement?
+
+    public init(placement: CrossPromoPlacement, onError: ((Error) -> Void)? = nil) {
         self.placement = placement
         self.onError = onError
-        self.onHeightChange = onHeightChange
     }
 
-    func makeUIView(context: Context) -> CrossPromoCardUIView {
+    public func makeUIView(context: Context) -> CrossPromoCardUIView {
         let view = CrossPromoCardUIView(placement: placement)
         view.onError = onError
-        view.onPreferredHeightChange = onHeightChange
+        connectHeightReporting(to: view)
         return view
     }
 
-    func updateUIView(_ uiView: CrossPromoCardUIView, context: Context) {
+    public func updateUIView(_ uiView: CrossPromoCardUIView, context: Context) {
         uiView.onError = onError
-        uiView.onPreferredHeightChange = onHeightChange
+        connectHeightReporting(to: uiView)
         if uiView.placement != placement { uiView.placement = placement }
     }
 
-    func sizeThatFits(
+    public func sizeThatFits(
         _ proposal: ProposedViewSize,
         uiView: CrossPromoCardUIView,
         context: Context
     ) -> CGSize? {
-        fittingSize(for: proposal, uiView: uiView)
+        guard let width = proposal.width else { return nil }
+        guard measuredPlacement == placement, preferredHeight > 0 else {
+            return CGSize(width: width, height: 0)
+        }
+        return fittingSize(for: proposal, uiView: uiView)
+    }
+
+    private func connectHeightReporting(to view: CrossPromoCardUIView) {
+        let preferredHeight = $preferredHeight
+        let measuredPlacement = $measuredPlacement
+        let placement = placement
+        view.onPreferredHeightChange = { height in
+            let normalizedHeight = max(0, height)
+            guard measuredPlacement.wrappedValue != placement
+                    || abs(normalizedHeight - preferredHeight.wrappedValue) > 0.5 else { return }
+            measuredPlacement.wrappedValue = placement
+            preferredHeight.wrappedValue = normalizedHeight
+        }
     }
 }
 
