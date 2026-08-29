@@ -16,6 +16,9 @@ public final class CrossPromoCardNSView: NSView {
     }
     public var onError: ((Error) -> Void)?
     public var onCardLoaded: ((PromoCardData?) -> Void)?
+    var onPreferredHeightChange: ((CGFloat) -> Void)? {
+        didSet { schedulePreferredHeightReport() }
+    }
 
     private let container = NSStackView()
     private let iconWrapper = NSView()
@@ -36,6 +39,8 @@ public final class CrossPromoCardNSView: NSView {
     private var allowsOpening = true
     private var expandedLayoutConstraints: [NSLayoutConstraint] = []
     private var collapsedHeightConstraint: NSLayoutConstraint!
+    private var lastReportedPreferredHeight: CGFloat = -1
+    private var preferredHeightReportIsScheduled = false
 
     public init(placement: CrossPromoPlacement) {
         self.placement = placement
@@ -137,6 +142,7 @@ public final class CrossPromoCardNSView: NSView {
             cornerHeight: ctaButton.bounds.height / 2,
             transform: nil
         )
+        schedulePreferredHeightReport()
     }
 
     public override func keyDown(with event: NSEvent) {
@@ -432,6 +438,36 @@ public final class CrossPromoCardNSView: NSView {
         invalidateIntrinsicContentSize()
         needsLayout = true
         superview?.needsLayout = true
+        schedulePreferredHeightReport()
+    }
+
+    private func schedulePreferredHeightReport() {
+        guard onPreferredHeightChange != nil,
+              !preferredHeightReportIsScheduled else { return }
+        preferredHeightReportIsScheduled = true
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            reportPreferredHeight()
+            preferredHeightReportIsScheduled = false
+        }
+    }
+
+    private func reportPreferredHeight() {
+        guard let onPreferredHeightChange else { return }
+        let height: CGFloat
+        if isHidden {
+            height = 0
+        } else {
+            let width = bounds.width
+            guard width > 0 else { return }
+            let widthConstraint = widthAnchor.constraint(equalToConstant: width)
+            widthConstraint.isActive = true
+            height = fittingSize.height
+            widthConstraint.isActive = false
+        }
+        guard abs(height - lastReportedPreferredHeight) > 0.5 else { return }
+        lastReportedPreferredHeight = height
+        onPreferredHeightChange(height)
     }
 
     private func loadIcon(from url: URL) {
@@ -558,27 +594,35 @@ private final class MacViewabilityTracker {
     }
 }
 
-public struct CrossPromoCard: NSViewRepresentable {
-    public let placement: CrossPromoPlacement
-    public var onError: ((Error) -> Void)?
+struct CrossPromoPlatformCard: NSViewRepresentable {
+    let placement: CrossPromoPlacement
+    var onError: ((Error) -> Void)?
+    let onHeightChange: (CGFloat) -> Void
 
-    public init(placement: CrossPromoPlacement, onError: ((Error) -> Void)? = nil) {
+    init(
+        placement: CrossPromoPlacement,
+        onError: ((Error) -> Void)?,
+        onHeightChange: @escaping (CGFloat) -> Void
+    ) {
         self.placement = placement
         self.onError = onError
+        self.onHeightChange = onHeightChange
     }
 
-    public func makeNSView(context: Context) -> CrossPromoCardNSView {
+    func makeNSView(context: Context) -> CrossPromoCardNSView {
         let view = CrossPromoCardNSView(placement: placement)
         view.onError = onError
+        view.onPreferredHeightChange = onHeightChange
         return view
     }
 
-    public func updateNSView(_ nsView: CrossPromoCardNSView, context: Context) {
+    func updateNSView(_ nsView: CrossPromoCardNSView, context: Context) {
         nsView.onError = onError
+        nsView.onPreferredHeightChange = onHeightChange
         if nsView.placement != placement { nsView.placement = placement }
     }
 
-    public func sizeThatFits(
+    func sizeThatFits(
         _ proposal: ProposedViewSize,
         nsView: CrossPromoCardNSView,
         context: Context

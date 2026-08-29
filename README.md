@@ -79,9 +79,13 @@ Add the card to a SwiftUI screen:
 CrossPromoCard(placement: .postScan)
 ```
 
-UIKit apps can use `CrossPromoCardUIView(placement: .postScan)`. AppKit apps can use
-`CrossPromoCardNSView(placement: .postScan)`. Sandboxed Mac apps must enable the
-**Outgoing Connections (Client)** capability in their app target.
+That is the complete SwiftUI integration on iPhone, iPad, and Mac. The SDK chooses the
+native renderer and handles the card's asynchronous height change internally; host apps
+must not add UIKit/AppKit bridges or platform conditionals around it.
+
+Imperative UIKit apps can use `CrossPromoCardUIView(placement: .postScan)`. Imperative
+AppKit apps can use `CrossPromoCardNSView(placement: .postScan)`. Sandboxed Mac apps must
+enable the **Outgoing Connections (Client)** capability in their app target.
 
 [Detailed native Apple instructions](packages/crosspromo-ios/README.md)
 

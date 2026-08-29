@@ -6,6 +6,18 @@ protocol CrossPromoDeviceContextProviding: Sendable {
     func generateEvidence(challengeBase64: String, mode: String) async throws -> IntegrityEvidence
 }
 
+enum CrossPromoRuntimePlatform {
+    static var identifier: String {
+        #if os(iOS)
+        "ios"
+        #elseif os(macOS)
+        "macos"
+        #else
+        #error("CrossPromo needs an explicit platform identifier before enabling a new platform")
+        #endif
+    }
+}
+
 actor AppleDeviceContextProvider: CrossPromoDeviceContextProviding {
     private let bundle: Bundle
 
@@ -14,13 +26,8 @@ actor AppleDeviceContextProvider: CrossPromoDeviceContextProviding {
     }
 
     func snapshot() async throws -> DeviceSnapshot {
-        #if os(macOS)
-        let platform = "macos"
-        #else
-        let platform = "ios"
-        #endif
         let app = AppDescriptor(
-            platform: platform,
+            platform: CrossPromoRuntimePlatform.identifier,
             bundleID: bundle.bundleIdentifier ?? "unknown",
             version: bundle.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0",
             buildNumber: bundle.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "0"

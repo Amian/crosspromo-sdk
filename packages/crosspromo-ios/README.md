@@ -32,16 +32,30 @@ Drop the SwiftUI card where a recommendation fits naturally:
 CrossPromoCard(placement: .postScan)
 ```
 
-UIKit and AppKit integrations use the matching native view:
+`CrossPromoCard` is the same API on every supported Apple platform. It selects the
+native renderer and propagates load-time and width-driven height changes back into
+SwiftUI, including inside lists and forms. Do not wrap it in `UIViewRepresentable`,
+`NSViewRepresentable`, or host-side iOS/macOS renderer branches.
+
+### Advanced UIKit integration
+
+Apps that do not use SwiftUI can host the native UIKit view directly:
 
 ```swift
 let iOSCard = CrossPromoCardUIView(placement: .settings)
+```
+
+### Advanced AppKit integration
+
+Apps that do not use SwiftUI can host the native AppKit view directly:
+
+```swift
 let macCard = CrossPromoCardNSView(placement: .settings)
 ```
 
-Those two concrete view types are platform-specific; `CrossPromoCard` has the same
-SwiftUI initializer on iOS and macOS. Sandboxed Mac apps must enable the **Outgoing
-Connections (Client)** capability in the host app target.
+Those concrete view types are intentionally platform-specific escape hatches. Sandboxed
+Mac apps must enable the **Outgoing Connections (Client)** capability in the host app
+target.
 
 ## Making cards appear instantly
 
