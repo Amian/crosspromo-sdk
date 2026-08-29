@@ -50,6 +50,56 @@ struct CrossPromoMacOSTests {
         #expect(!view.accessibilityPerformPress(), "previews must never open a link")
     }
 
+    @Test("card click recognizer leaves CTA mouse events to the button")
+    @MainActor
+    func cardClickRecognizerLeavesCTAEventsToButton() throws {
+        let card = PromoCardData(
+            cardID: "preview-card",
+            appName: "Rock Finder",
+            iconURL: try #require(URL(string: "https://example.test/icon.png")),
+            tagline: "Find every rock",
+            cta: "Get",
+            clickURL: try #require(URL(string: "https://example.test/click")),
+            impressionToken: "preview-impression",
+            expiresAt: .distantFuture
+        )
+        let view = CrossPromoCardNSView(
+            preview: card,
+            icon: solidImage(color: .systemBlue)
+        )
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 520, height: 120),
+            styleMask: [.titled],
+            backing: .buffered,
+            defer: false
+        )
+        window.contentView = view
+        view.frame = window.contentView?.bounds ?? .zero
+        view.layoutSubtreeIfNeeded()
+
+        let recognizer = try #require(view.gestureRecognizers.first as? NSClickGestureRecognizer)
+        let button = try #require(firstSubview(of: NSButton.self, in: view))
+        let buttonCenter = button.convert(
+            NSPoint(x: button.bounds.midX, y: button.bounds.midY),
+            to: view
+        )
+        let bodyPoint = NSPoint(x: 8, y: view.bounds.midY)
+
+        let buttonEvent = try makeMouseDownEvent(at: buttonCenter, in: view, window: window)
+        let bodyEvent = try makeMouseDownEvent(at: bodyPoint, in: view, window: window)
+        let buttonAttempt = recognizer.delegate?.gestureRecognizer?(
+            recognizer,
+            shouldAttemptToRecognizeWith: buttonEvent
+        )
+        let bodyAttempt = recognizer.delegate?.gestureRecognizer?(
+            recognizer,
+            shouldAttemptToRecognizeWith: bodyEvent
+        )
+
+        #expect(buttonAttempt == false)
+        #expect(bodyAttempt == true)
+    }
+
     @Test("SwiftUI facade preserves the shared public API")
     @MainActor
     func swiftUIFacadePreservesPublicAPI() {
@@ -58,6 +108,11 @@ struct CrossPromoMacOSTests {
         requireNativeRepresentable(facade)
         #expect(facade.placement == .settings)
         #expect(facade.onError == nil)
+        #expect(facade.onCardLoaded == nil)
+
+        let observedFacade = facade.onCardLoaded { _ in }
+        requireNativeRepresentable(observedFacade)
+        #expect(observedFacade.onCardLoaded != nil)
     }
 
     @Test("native preferred height follows loading and available width")
@@ -138,6 +193,34 @@ struct CrossPromoMacOSTests {
         context.setFillColor((color.usingColorSpace(.deviceRGB) ?? color).cgColor)
         context.fill(CGRect(origin: .zero, size: size))
         return NSImage(cgImage: context.makeImage()!, size: size)
+    }
+
+    @MainActor
+    private func firstSubview<T: NSView>(of type: T.Type, in root: NSView) -> T? {
+        if let match = root as? T { return match }
+        for subview in root.subviews {
+            if let match = firstSubview(of: type, in: subview) { return match }
+        }
+        return nil
+    }
+
+    @MainActor
+    private func makeMouseDownEvent(
+        at point: NSPoint,
+        in view: NSView,
+        window: NSWindow
+    ) throws -> NSEvent {
+        try #require(NSEvent.mouseEvent(
+            with: .leftMouseDown,
+            location: view.convert(point, to: nil),
+            modifierFlags: [],
+            timestamp: 0,
+            windowNumber: window.windowNumber,
+            context: nil,
+            eventNumber: 0,
+            clickCount: 1,
+            pressure: 1
+        ))
     }
 
     @MainActor

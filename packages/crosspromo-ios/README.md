@@ -32,6 +32,19 @@ Drop the SwiftUI card where a recommendation fits naturally:
 CrossPromoCard(placement: .postScan)
 ```
 
+Optional placements can remove themselves completely after an empty response
+instead of leaving stack or form spacing around the SDK's collapsed native
+view. Observe the resolution and treat `nil` as no eligible card:
+
+```swift
+CrossPromoCard(placement: .settings, onError: { _ in
+    isPromotionAvailable = false
+})
+.onCardLoaded { card in
+    isPromotionAvailable = card != nil
+}
+```
+
 `CrossPromoCard` is the same API on every supported Apple platform. It selects the
 native renderer and propagates load-time and width-driven height changes back into
 SwiftUI, including inside lists and forms. Do not wrap it in `UIViewRepresentable`,

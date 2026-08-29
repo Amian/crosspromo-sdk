@@ -17,7 +17,7 @@ jobs:
       - run: plutil -lint packages/crosspromo-ios/Sources/CrossPromo/PrivacyInfo.xcprivacy packages/crosspromo-flutter/ios/PrivacyInfo.xcprivacy packages/crosspromo-react-native/ios/PrivacyInfo.xcprivacy
       - run: swift build
       - run: swift test
-      - run: swift build --triple arm64-apple-ios16.0-simulator --sdk "$(xcrun --sdk iphonesimulator --show-sdk-path)"
+      - run: swift build --build-tests --triple arm64-apple-ios16.0-simulator --sdk "$(xcrun --sdk iphonesimulator --show-sdk-path)"
 
   flutter-ios:
     runs-on: macos-15

@@ -9,7 +9,7 @@
 import SwiftUI
 import Testing
 import UIKit
-@testable import CrossPromo
+import CrossPromo
 
 @Suite("CrossPromo UIKit compatibility")
 struct CrossPromoIOSCompatibilityTests {
@@ -21,6 +21,12 @@ struct CrossPromoIOSCompatibilityTests {
         requireLegacyUIKitAPI(card)
         #expect(card.placement == .settings)
         #expect(card.onError != nil)
+        #expect(card.onCardLoaded == nil)
+
+        let observedCard = card.onCardLoaded { _ in }
+        requireLegacyUIKitAPI(observedCard)
+        #expect(observedCard.onError != nil)
+        #expect(observedCard.onCardLoaded != nil)
     }
 
     @MainActor

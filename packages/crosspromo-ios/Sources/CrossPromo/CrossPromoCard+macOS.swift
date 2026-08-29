@@ -10,7 +10,7 @@ import AppKit
 import SwiftUI
 
 @MainActor
-public final class CrossPromoCardNSView: NSView {
+public final class CrossPromoCardNSView: NSView, NSGestureRecognizerDelegate {
     public var placement: CrossPromoPlacement {
         didSet { reload() }
     }
@@ -256,6 +256,7 @@ public final class CrossPromoCardNSView: NSView {
             target: self,
             action: #selector(handleCardClick(_:))
         )
+        clickRecognizer.delegate = self
         addGestureRecognizer(clickRecognizer)
 
         NSLayoutConstraint.activate([
@@ -489,6 +490,15 @@ public final class CrossPromoCardNSView: NSView {
         }
     }
 
+    public func gestureRecognizer(
+        _ gestureRecognizer: NSGestureRecognizer,
+        shouldAttemptToRecognizeWith event: NSEvent
+    ) -> Bool {
+        let location = convert(event.locationInWindow, from: nil)
+        let buttonFrame = ctaButton.convert(ctaButton.bounds, to: self)
+        return !buttonFrame.contains(location)
+    }
+
     @objc private func handleCardClick(_ recognizer: NSClickGestureRecognizer) {
         let buttonFrame = convert(ctaButton.bounds, from: ctaButton)
         guard !buttonFrame.contains(recognizer.location(in: self)) else { return }
@@ -597,6 +607,7 @@ private final class MacViewabilityTracker {
 public struct CrossPromoCard: NSViewRepresentable {
     public let placement: CrossPromoPlacement
     public var onError: ((Error) -> Void)?
+    public var onCardLoaded: ((PromoCardData?) -> Void)?
 
     @State private var preferredHeight: CGFloat = 0
     @State private var measuredPlacement: CrossPromoPlacement?
@@ -604,17 +615,34 @@ public struct CrossPromoCard: NSViewRepresentable {
     public init(placement: CrossPromoPlacement, onError: ((Error) -> Void)? = nil) {
         self.placement = placement
         self.onError = onError
+        self.onCardLoaded = nil
+    }
+
+    /// Observes whether the request resolved to a card or to an empty result.
+    ///
+    /// A `nil` value means there is no eligible card. Consumers that place the
+    /// representable inside a stack, list, or form can use that resolution to
+    /// remove their optional row instead of retaining spacing around a
+    /// zero-height native view.
+    public func onCardLoaded(
+        _ action: @escaping (PromoCardData?) -> Void
+    ) -> Self {
+        var card = self
+        card.onCardLoaded = action
+        return card
     }
 
     public func makeNSView(context: Context) -> CrossPromoCardNSView {
         let view = CrossPromoCardNSView(placement: placement)
         view.onError = onError
+        view.onCardLoaded = onCardLoaded
         connectHeightReporting(to: view)
         return view
     }
 
     public func updateNSView(_ nsView: CrossPromoCardNSView, context: Context) {
         nsView.onError = onError
+        nsView.onCardLoaded = onCardLoaded
         connectHeightReporting(to: nsView)
         if nsView.placement != placement { nsView.placement = placement }
     }

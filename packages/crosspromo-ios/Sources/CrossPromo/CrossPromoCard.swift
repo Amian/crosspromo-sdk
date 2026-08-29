@@ -549,6 +549,7 @@ private final class ViewabilityTracker {
 public struct CrossPromoCard: UIViewRepresentable {
     public let placement: CrossPromoPlacement
     public var onError: ((Error) -> Void)?
+    public var onCardLoaded: ((PromoCardData?) -> Void)?
 
     @State private var preferredHeight: CGFloat = 0
     @State private var measuredPlacement: CrossPromoPlacement?
@@ -556,17 +557,34 @@ public struct CrossPromoCard: UIViewRepresentable {
     public init(placement: CrossPromoPlacement, onError: ((Error) -> Void)? = nil) {
         self.placement = placement
         self.onError = onError
+        self.onCardLoaded = nil
+    }
+
+    /// Observes whether the request resolved to a card or to an empty result.
+    ///
+    /// A `nil` value means there is no eligible card. Consumers that place the
+    /// representable inside a stack, list, or form can use that resolution to
+    /// remove their optional row instead of retaining spacing around a
+    /// zero-height native view.
+    public func onCardLoaded(
+        _ action: @escaping (PromoCardData?) -> Void
+    ) -> Self {
+        var card = self
+        card.onCardLoaded = action
+        return card
     }
 
     public func makeUIView(context: Context) -> CrossPromoCardUIView {
         let view = CrossPromoCardUIView(placement: placement)
         view.onError = onError
+        view.onCardLoaded = onCardLoaded
         connectHeightReporting(to: view)
         return view
     }
 
     public func updateUIView(_ uiView: CrossPromoCardUIView, context: Context) {
         uiView.onError = onError
+        uiView.onCardLoaded = onCardLoaded
         connectHeightReporting(to: uiView)
         if uiView.placement != placement { uiView.placement = placement }
     }
