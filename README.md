@@ -1,6 +1,13 @@
 # CrossPromo SDK
 
+[![CI](https://github.com/Amian/crosspromo-sdk/actions/workflows/ci.yml/badge.svg)](https://github.com/Amian/crosspromo-sdk/actions/workflows/ci.yml)
+[![Swift 6.0](https://img.shields.io/badge/Swift-6.0-orange.svg)](https://swift.org)
+[![Native Platforms](https://img.shields.io/badge/Native-iOS%2016%2B%20%7C%20macOS%2013%2B-purple.svg)](packages/crosspromo-ios/README.md)
+[![Flutter](https://img.shields.io/badge/Flutter-iOS%2016%2B%20only-blue.svg)](packages/crosspromo-flutter/README.md)
+[![React Native](https://img.shields.io/badge/React%20Native-iOS%2016%2B%20only-blue.svg)](packages/crosspromo-react-native/README.md)
+
 Add a small “you might also like” app recommendation card to your Apple-platform app.
+Learn more about the service at [promotethatapp.com](https://promotethatapp.com).
 
 ## The whole setup
 
