@@ -152,8 +152,8 @@ class CrossPromoClient {
     final session = await _validSession();
     // No placement: the backend returns the same card either way, and sending one
     // here would tie this card to a slot before we know where it will be shown.
-    final json = await _post('/v1/cards', const {},
-        bearerToken: session.accessToken);
+    final json =
+        await _post('/v1/cards', const {}, bearerToken: session.accessToken);
     final card = json['card'];
     return card == null
         ? null

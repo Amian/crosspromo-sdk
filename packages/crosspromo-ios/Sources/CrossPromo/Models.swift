@@ -188,8 +188,8 @@ struct APIErrorBody: Codable, Sendable {
 
 /// A click is a plain redirect with no body, so the slot travels on the link.
 ///
-/// Lives here rather than beside the card view so it is Foundation-only and can be
-/// tested on any platform — the card view is compiled out where UIKit is absent.
+/// Lives here rather than beside either native card view so it remains
+/// Foundation-only and can be tested without UIKit or AppKit.
 func crossPromoClickURL(_ url: URL, in placement: CrossPromoPlacement) -> URL {
     guard var components = URLComponents(url: url, resolvingAgainstBaseURL: false) else {
         return url

@@ -86,7 +86,8 @@ void main() {
     expect(transport.requests.last.idempotencyKey, isNotNull);
   });
 
-  test('a prefetched card is served without any further network call', () async {
+  test('a prefetched card is served without any further network call',
+      () async {
     final transport = FakeTransport();
     final client = newClient(transport);
 
@@ -120,7 +121,8 @@ void main() {
         await client.fetchCard(placement: CrossPromoPlacement.postScan);
 
     expect(first?.cardId, 'c_1');
-    expect(second?.cardId, 'c_2', reason: 'the second card must be a fresh one');
+    expect(second?.cardId, 'c_2',
+        reason: 'the second card must be a fresh one');
     expect(first?.impressionToken, isNot(second?.impressionToken));
     expect(transport.cardRequestCount, 2);
   });
@@ -133,7 +135,8 @@ void main() {
     final client = newClient(transport);
 
     await client.prefetch();
-    final card = await client.fetchCard(placement: CrossPromoPlacement.settings);
+    final card =
+        await client.fetchCard(placement: CrossPromoPlacement.settings);
 
     expect(card?.cardId, 'c_1', reason: 'the held card is used, not a new one');
     expect(transport.cardRequestCount, 1);
@@ -150,7 +153,8 @@ void main() {
     expect(
       cardRequest.body.containsKey('placement'),
       isFalse,
-      reason: 'the slot is reported when the ad is seen, not when it is fetched',
+      reason:
+          'the slot is reported when the ad is seen, not when it is fetched',
     );
   });
 
@@ -167,8 +171,8 @@ void main() {
       duration: const Duration(seconds: 2),
     );
 
-    final impression =
-        transport.requests.firstWhere((r) => r.path == '/v1/events/impressions');
+    final impression = transport.requests
+        .firstWhere((r) => r.path == '/v1/events/impressions');
     expect(impression.body['placement'], 'empty_state');
   });
 
@@ -204,7 +208,8 @@ void main() {
     final card = await client.fetchCard(
       placement: CrossPromoPlacement.postScan,
     );
-    expect(transport.cardRequestCount, 2, reason: 'the stale card is refetched');
+    expect(transport.cardRequestCount, 2,
+        reason: 'the stale card is refetched');
     expect(card?.cardId, 'c_2');
   });
 
@@ -285,7 +290,8 @@ void main() {
     expect(transport.cardRequestCount, 1);
   });
 
-  test('concurrent prefetches for one placement share a single fetch', () async {
+  test('concurrent prefetches for one placement share a single fetch',
+      () async {
     final transport = FakeTransport();
     final client = newClient(transport);
 

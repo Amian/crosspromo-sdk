@@ -9,6 +9,9 @@ public final class CrossPromoCardUIView: UIView {
     }
     public var onError: ((Error) -> Void)?
     public var onCardLoaded: ((PromoCardData?) -> Void)?
+    var onPreferredHeightChange: ((CGFloat) -> Void)? {
+        didSet { schedulePreferredHeightReport() }
+    }
 
     private let container = UIStackView()
     private let iconWrapper = UIView()
@@ -28,6 +31,8 @@ public final class CrossPromoCardUIView: UIView {
     private var allowsOpening = true
     private var expandedLayoutConstraints: [NSLayoutConstraint] = []
     private var collapsedHeightConstraint: NSLayoutConstraint!
+    private var lastReportedPreferredHeight: CGFloat = -1
+    private var preferredHeightReportIsScheduled = false
 
     public init(placement: CrossPromoPlacement) {
         self.placement = placement
@@ -58,6 +63,7 @@ public final class CrossPromoCardUIView: UIView {
 
     public func reload() {
         loadTask?.cancel()
+        imageTask?.cancel()
         allowsOpening = true
         setCollapsed(true)
         card = nil
@@ -222,12 +228,19 @@ public final class CrossPromoCardUIView: UIView {
             roundedRect: ctaButton.bounds,
             cornerRadius: ctaButton.bounds.height / 2
         ).cgPath
+        schedulePreferredHeightReport()
     }
 
     public override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
         super.traitCollectionDidChange(previousTraitCollection)
         if previousTraitCollection?.userInterfaceStyle != traitCollection.userInterfaceStyle {
             refreshLayerColors()
+        }
+        if previousTraitCollection?.preferredContentSizeCategory
+            != traitCollection.preferredContentSizeCategory {
+            invalidateIntrinsicContentSize()
+            setNeedsLayout()
+            schedulePreferredHeightReport()
         }
     }
 
@@ -405,12 +418,42 @@ public final class CrossPromoCardUIView: UIView {
             NSLayoutConstraint.activate(expandedLayoutConstraints)
         }
         isHidden = collapsed
-        // A card's text arrives after SwiftUI has already measured this view — it is
-        // empty at that point, so the height it settled on is too short and the app
-        // name gets clipped once real copy lands. Telling UIKit the intrinsic size is
-        // stale is what makes SwiftUI ask for a new one.
+        // A card's text arrives after SwiftUI has already measured this view. The
+        // representable owns the resulting explicit height; native clients still
+        // benefit from intrinsic-size invalidation.
         invalidateIntrinsicContentSize()
         superview?.setNeedsLayout()
+        schedulePreferredHeightReport()
+    }
+
+    private func schedulePreferredHeightReport() {
+        guard onPreferredHeightChange != nil,
+              !preferredHeightReportIsScheduled else { return }
+        preferredHeightReportIsScheduled = true
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            reportPreferredHeight()
+            preferredHeightReportIsScheduled = false
+        }
+    }
+
+    private func reportPreferredHeight() {
+        guard let onPreferredHeightChange else { return }
+        let height: CGFloat
+        if isHidden {
+            height = 0
+        } else {
+            let width = bounds.width
+            guard width > 0 else { return }
+            height = systemLayoutSizeFitting(
+                CGSize(width: width, height: UIView.layoutFittingCompressedSize.height),
+                withHorizontalFittingPriority: .required,
+                verticalFittingPriority: .fittingSizeLevel
+            ).height
+        }
+        guard abs(height - lastReportedPreferredHeight) > 0.5 else { return }
+        lastReportedPreferredHeight = height
+        onPreferredHeightChange(height)
     }
 
     private func loadIcon(from url: URL) {
@@ -506,20 +549,43 @@ private final class ViewabilityTracker {
 public struct CrossPromoCard: UIViewRepresentable {
     public let placement: CrossPromoPlacement
     public var onError: ((Error) -> Void)?
+    public var onCardLoaded: ((PromoCardData?) -> Void)?
+
+    @State private var preferredHeight: CGFloat = 0
+    @State private var measuredPlacement: CrossPromoPlacement?
 
     public init(placement: CrossPromoPlacement, onError: ((Error) -> Void)? = nil) {
         self.placement = placement
         self.onError = onError
+        self.onCardLoaded = nil
+    }
+
+    /// Observes whether the request resolved to a card or to an empty result.
+    ///
+    /// A `nil` value means there is no eligible card. Consumers that place the
+    /// representable inside a stack, list, or form can use that resolution to
+    /// remove their optional row instead of retaining spacing around a
+    /// zero-height native view.
+    public func onCardLoaded(
+        _ action: @escaping (PromoCardData?) -> Void
+    ) -> Self {
+        var card = self
+        card.onCardLoaded = action
+        return card
     }
 
     public func makeUIView(context: Context) -> CrossPromoCardUIView {
         let view = CrossPromoCardUIView(placement: placement)
         view.onError = onError
+        view.onCardLoaded = onCardLoaded
+        connectHeightReporting(to: view)
         return view
     }
 
     public func updateUIView(_ uiView: CrossPromoCardUIView, context: Context) {
         uiView.onError = onError
+        uiView.onCardLoaded = onCardLoaded
+        connectHeightReporting(to: uiView)
         if uiView.placement != placement { uiView.placement = placement }
     }
 
@@ -528,7 +594,24 @@ public struct CrossPromoCard: UIViewRepresentable {
         uiView: CrossPromoCardUIView,
         context: Context
     ) -> CGSize? {
-        fittingSize(for: proposal, uiView: uiView)
+        guard let width = proposal.width else { return nil }
+        guard measuredPlacement == placement, preferredHeight > 0 else {
+            return CGSize(width: width, height: 0)
+        }
+        return fittingSize(for: proposal, uiView: uiView)
+    }
+
+    private func connectHeightReporting(to view: CrossPromoCardUIView) {
+        let preferredHeight = $preferredHeight
+        let measuredPlacement = $measuredPlacement
+        let placement = placement
+        view.onPreferredHeightChange = { height in
+            let normalizedHeight = max(0, height)
+            guard measuredPlacement.wrappedValue != placement
+                    || abs(normalizedHeight - preferredHeight.wrappedValue) > 0.5 else { return }
+            measuredPlacement.wrappedValue = placement
+            preferredHeight.wrappedValue = normalizedHeight
+        }
     }
 }
 
@@ -562,6 +645,7 @@ public struct CrossPromoCardPreview: UIViewRepresentable {
     }
 }
 
+@MainActor
 private func fittingSize(
     for proposal: ProposedViewSize,
     uiView: CrossPromoCardUIView

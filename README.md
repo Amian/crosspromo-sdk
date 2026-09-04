@@ -1,6 +1,13 @@
 # CrossPromo SDK
 
-Add a small “you might also like” app recommendation card to your mobile app.
+[![CI](https://github.com/Amian/crosspromo-sdk/actions/workflows/ci.yml/badge.svg)](https://github.com/Amian/crosspromo-sdk/actions/workflows/ci.yml)
+[![Swift 6.0](https://img.shields.io/badge/Swift-6.0-orange.svg)](https://swift.org)
+[![Native Platforms](https://img.shields.io/badge/Native-iOS%2016%2B%20%7C%20macOS%2013%2B-purple.svg)](packages/crosspromo-ios/README.md)
+[![Flutter](https://img.shields.io/badge/Flutter-iOS%2016%2B%20only-blue.svg)](packages/crosspromo-flutter/README.md)
+[![React Native](https://img.shields.io/badge/React%20Native-iOS%2016%2B%20only-blue.svg)](packages/crosspromo-react-native/README.md)
+
+Add a small “you might also like” app recommendation card to your Apple-platform app.
+Learn more about the service at [promotethatapp.com](https://promotethatapp.com).
 
 ## The whole setup
 
@@ -11,12 +18,13 @@ Add a small “you might also like” app recommendation card to your mobile app
 
 CrossPromo supports:
 
-- native iPhone/iPad apps using Swift or SwiftUI;
+- native iPhone, iPad, and Mac apps using Swift or SwiftUI;
 - Flutter apps running on iOS; and
 - React Native apps running on iOS.
 
-> **CrossPromo currently supports iOS only.** The SDK and backend can be used for
-> integration testing. Only verified activity from a public App Store release counts.
+Native macOS support requires macOS 13 or later. The Flutter and React Native packages
+remain iOS-only. The SDK and backend can be used for integration testing, but only
+activity the CrossPromo service verifies against a public App Store release counts.
 
 ## Fastest option: ask your coding agent
 
@@ -30,8 +38,8 @@ SDK repository: https://github.com/Amian/crosspromo-sdk
 
 Please work autonomously and make the integration changes for me:
 
-1. Confirm this is a native iOS, Flutter iOS, or React Native iOS app. CrossPromo v1
-   does not support Android.
+1. Confirm this is a native iOS 16+, native macOS 13+, Flutter iOS, or React Native iOS
+   app. The Flutter and React Native packages do not support macOS or Android.
 2. Read the CrossPromo root README and the README for the matching package.
 3. Install the SDK directly from the GitHub repository using the documented method.
 4. Configure CrossPromo once at app startup. Ask me to copy my app key from the
@@ -42,9 +50,10 @@ Please work autonomously and make the integration changes for me:
    then settings or an empty state. Do not redesign the rest of the screen.
 6. Use the SDK's typed placement option that best fits the screen: post-scan, result,
    settings, or empty state. Do not pass a raw string.
-7. Confirm the iOS deployment target is iOS 16 or later. CrossPromo does not require
-   an App Attest capability or an in-app purchase product.
-8. Run the relevant formatter, tests, and an iOS build. Fix integration errors.
+7. Confirm the native deployment target is iOS 16 or macOS 13 or later. CrossPromo
+   does not require an App Attest capability or an in-app purchase product. A
+   sandboxed Mac app must allow outgoing network connections.
+8. Run the relevant formatter, tests, and an iOS or macOS build. Fix integration errors.
 9. Finish by listing the files you changed and remind me to complete the CrossPromo
    choices in APP_STORE_PRIVACY.md before submitting the app update.
 ```
@@ -53,7 +62,7 @@ The developer only needs to provide the app key shown in the CrossPromo dashboar
 
 ## Manual integration
 
-### Native iOS
+### Native Apple platforms
 
 In Xcode, choose **File → Add Package Dependencies** and enter:
 
@@ -77,9 +86,15 @@ Add the card to a SwiftUI screen:
 CrossPromoCard(placement: .postScan)
 ```
 
-UIKit apps can use `CrossPromoCardUIView(placement: .postScan)`.
+That is the complete SwiftUI integration on iPhone, iPad, and Mac. The SDK chooses the
+native renderer and handles the card's asynchronous height change internally; host apps
+must not add UIKit/AppKit bridges or platform conditionals around it.
 
-[Detailed iOS instructions](packages/crosspromo-ios/README.md)
+Imperative UIKit apps can use `CrossPromoCardUIView(placement: .postScan)`. Imperative
+AppKit apps can use `CrossPromoCardNSView(placement: .postScan)`. Sandboxed Mac apps must
+enable the **Outgoing Connections (Client)** capability in their app target.
+
+[Detailed native Apple instructions](packages/crosspromo-ios/README.md)
 
 ### Flutter on iOS
 
@@ -147,7 +162,7 @@ Placements are typed options, so a misspelling is caught before the app runs.
 No manual environment switch is required. When the environment argument is omitted,
 the SDK uses sandbox in debug builds and production in release builds. Before release:
 
-- the app must target iOS 16 or later;
+- the app must target iOS 16 or macOS 13 or later;
 - the SDK must be included in a version released through the public App Store; and
 - the dashboard registration must match the app's bundle ID and numeric Apple app ID.
 
@@ -155,8 +170,9 @@ Keep the environment argument omitted for the App Store build. Explicit override
 available for unusual testing, but do not ship an explicit sandbox override.
 
 CrossPromo does not require an App Attest capability or an in-app purchase product.
-The SDK reads the app identifier, version, build number, and Apple-signed App
-Transaction automatically.
+The SDK reads the app platform, identifier, version, build number, and Apple-signed App
+Transaction automatically. A local card rendering successfully does not prove an event
+was counted; eligibility remains a server-side decision.
 
 ## App Store privacy — five small choices
 
@@ -191,7 +207,7 @@ Apple-signed App Transaction is checked during verification and then discarded.
 
 | Package | Location |
 |---|---|
-| Native iOS | [`packages/crosspromo-ios`](packages/crosspromo-ios) |
+| Native iOS and macOS | [`packages/crosspromo-ios`](packages/crosspromo-ios) |
 | Flutter | [`packages/crosspromo-flutter`](packages/crosspromo-flutter) |
 | React Native | [`packages/crosspromo-react-native`](packages/crosspromo-react-native) |
 
