@@ -164,6 +164,93 @@ struct CrossPromoMacOSTests {
         heightContinuation.finish()
     }
 
+    @Test("card measurement does not modify an attached layout graph")
+    @MainActor
+    func measurementDoesNotModifyAttachedLayout() throws {
+        let card = sizingCard()
+        let view = CrossPromoCardNSView(preview: card, icon: solidImage(color: .systemBlue))
+        let root = NSView(frame: NSRect(x: 0, y: 0, width: 600, height: 300))
+        root.addSubview(view)
+        NSLayoutConstraint.activate([
+            view.leadingAnchor.constraint(equalTo: root.leadingAnchor),
+            view.trailingAnchor.constraint(equalTo: root.trailingAnchor),
+            view.topAnchor.constraint(equalTo: root.topAnchor),
+        ])
+        let constraints = Set(view.constraints.map(ObjectIdentifier.init))
+        let parentConstraints = Set(root.constraints.map(ObjectIdentifier.init))
+        let originalFrame = view.frame
+        let widths: [CGFloat?] = [nil, .infinity, .nan, 0, 260, 300, 400, 600]
+        for _ in 0..<100 {
+            for width in widths {
+                let size = view.preferredSize(forWidth: width)
+                #expect(size.width.isFinite && size.height.isFinite)
+                #expect(size.width >= 0 && size.height >= 0)
+                #expect(Set(view.constraints.map(ObjectIdentifier.init)) == constraints)
+                #expect(Set(root.constraints.map(ObjectIdentifier.init)) == parentConstraints)
+                #expect(view.frame == originalFrame)
+            }
+        }
+        let wide = view.preferredSize(forWidth: 600)
+        let narrow = view.preferredSize(forWidth: 260)
+        #expect(narrow.height > wide.height)
+        #expect(narrow.height < 200, "two-line text must not create an unbounded card")
+        view.isHidden = true
+        #expect(view.preferredSize(forWidth: 600).height == 0)
+    }
+
+    @Test("SwiftUI card remains bounded while a mounted host changes width")
+    @MainActor
+    func mountedSwiftUICardResizes() async throws {
+        let card = sizingCard()
+        let icon = solidImage(color: .systemBlue)
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 700, height: 350),
+            styleMask: [.borderless], backing: .buffered, defer: false
+        )
+        window.isReleasedWhenClosed = false
+        defer { window.close() }
+        func content(width: CGFloat) -> some View {
+            ScrollView {
+                VStack {
+                    CrossPromoCardPreview(card: card, icon: icon)
+                        .frame(width: width)
+                }
+            }
+        }
+        let host = NSHostingView(rootView: content(width: 600))
+        host.sizingOptions = []
+        window.contentView = host
+        for width in [600.0, 300, 260, 400, 600] {
+            host.rootView = content(width: width)
+            host.layoutSubtreeIfNeeded()
+            await drainMainQueue()
+            host.layoutSubtreeIfNeeded()
+            let native = try #require(firstSubview(of: CrossPromoCardNSView.self, in: host))
+            #expect(abs(native.frame.width - width) < 1)
+            #expect(native.frame.height >= 84 && native.frame.height < 200)
+            let labels = native.subviews.flatMap { $0.subviews }.flatMap { $0.subviews }
+                .compactMap { $0 as? NSTextField }.filter { $0.maximumNumberOfLines == 2 }
+            #expect(labels.count == 2)
+            #expect(labels.allSatisfy { $0.preferredMaxLayoutWidth > 0 })
+            if let capturePath = ProcessInfo.processInfo.environment["CROSSPROMO_LAYOUT_CAPTURE_DIR"],
+               let bitmap = native.bitmapImageRepForCachingDisplay(in: native.bounds) {
+                native.cacheDisplay(in: native.bounds, to: bitmap)
+                let url = URL(fileURLWithPath: capturePath).appendingPathComponent("card-\(Int(width)).png")
+                try bitmap.representation(using: .png, properties: [:])?.write(to: url)
+            }
+        }
+    }
+
+    private func sizingCard() -> PromoCardData {
+        PromoCardData(
+            cardID: "sequoia-sizing", appName: "Sample App with a Longer Name",
+            iconURL: URL(fileURLWithPath: "/preview-icon"),
+            tagline: "A longer local preview that wraps when the browser window becomes narrow.",
+            cta: "View App", clickURL: URL(fileURLWithPath: "/preview-click"),
+            impressionToken: "sequoia-sizing", expiresAt: .distantFuture
+        )
+    }
+
     @Test("AppKit accent extraction keeps saturated icon color")
     @MainActor
     func appKitAccentExtraction() throws {
