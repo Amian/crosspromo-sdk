@@ -50,6 +50,23 @@ native renderer and propagates load-time and width-driven height changes back in
 SwiftUI, including inside lists and forms. Do not wrap it in `UIViewRepresentable`,
 `NSViewRepresentable`, or host-side iOS/macOS renderer branches.
 
+### macOS card measurement
+
+The AppKit card measures its text and fixed chrome independently of its attached
+Auto Layout graph. SwiftUI size proposals must not add temporary constraints or
+ask the mounted view for a constraint-based fitting size. Both live and preview
+cards use the same measurement path; empty cards still report zero height.
+Wrapping-label widths follow the card's available text column during layout.
+
+This avoids the fitting path identified in a macOS 15.7.7 startup hang report.
+Regression coverage includes repeated finite, unspecified and non-finite width
+proposals without constraint/frame mutations, and a mounted SwiftUI scroll-view
+card resized through 600, 300, 260, 400 and 600 points. Host tests and native card
+captures pass. On 20 October 2026 the app owner confirmed that the candidate
+works in the affected macOS 15 VM. This confirms the reproduced startup hang;
+it does not establish the cause of older customer reports without matching
+diagnostics.
+
 ### Advanced UIKit integration
 
 Apps that do not use SwiftUI can host the native UIKit view directly:
