@@ -236,7 +236,8 @@ struct CrossPromoMacOSTests {
             let buttonFrame = button.convert(button.bounds, to: native)
             let pixelTolerance = native.bounds.insetBy(dx: -0.5, dy: -0.5)
             #expect(button.isHidden || pixelTolerance.contains(buttonFrame))
-            #expect(button.isHidden == (width == 260))
+            #expect(width != 260 || button.isHidden)
+            #expect(width < 400 || !button.isHidden)
             if let capturePath = ProcessInfo.processInfo.environment["CROSSPROMO_LAYOUT_CAPTURE_DIR"],
                let bitmap = native.bitmapImageRepForCachingDisplay(in: native.bounds) {
                 native.cacheDisplay(in: native.bounds, to: bitmap)

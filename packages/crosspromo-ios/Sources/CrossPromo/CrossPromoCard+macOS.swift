@@ -560,7 +560,8 @@ public final class CrossPromoCardNSView: NSView, NSGestureRecognizerDelegate {
     }
 
     private func usesCompactLayout(for width: CGFloat, buttonWidth: CGFloat) -> Bool {
-        width < expandedChromeWidth(buttonWidth: buttonWidth) + Layout.minimumExpandedTextWidth
+        let requiredTextWidth = max(Layout.minimumExpandedTextWidth, disclosureRowWidth)
+        return width < expandedChromeWidth(buttonWidth: buttonWidth) + requiredTextWidth
     }
 
     private func loadIcon(from url: URL) {
