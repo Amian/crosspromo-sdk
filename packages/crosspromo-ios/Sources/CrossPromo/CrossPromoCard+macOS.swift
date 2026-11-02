@@ -20,6 +20,19 @@ public final class CrossPromoCardNSView: NSView, NSGestureRecognizerDelegate {
         didSet { schedulePreferredHeightReport() }
     }
 
+    private enum Layout {
+        static let inset: CGFloat = 14
+        static let iconSize: CGFloat = 56
+        static let columnSpacing: CGFloat = 12
+        static let textSpacing: CGFloat = 3
+        static let disclosureSpacing: CGFloat = 5
+        static let chipHorizontalInset: CGFloat = 5
+        static let chipVerticalInset: CGFloat = 2.5
+        static let minimumHeight: CGFloat = 84
+        static let minimumTextMeasurementWidth: CGFloat = 1
+        static let minimumExpandedTextWidth: CGFloat = 56
+    }
+
     private let container = NSStackView()
     private let iconWrapper = NSView()
     private let iconView = NSImageView()
@@ -122,6 +135,7 @@ public final class CrossPromoCardNSView: NSView, NSGestureRecognizerDelegate {
     }
 
     public override func layout() {
+        updateWrappingWidth(for: bounds.width)
         super.layout()
         layer?.shadowPath = CGPath(
             roundedRect: bounds,
@@ -175,7 +189,7 @@ public final class CrossPromoCardNSView: NSView, NSGestureRecognizerDelegate {
         container.orientation = .horizontal
         container.alignment = .centerY
         container.distribution = .fill
-        container.spacing = 12
+        container.spacing = Layout.columnSpacing
         container.translatesAutoresizingMaskIntoConstraints = false
 
         iconWrapper.translatesAutoresizingMaskIntoConstraints = false
@@ -195,7 +209,7 @@ public final class CrossPromoCardNSView: NSView, NSGestureRecognizerDelegate {
         textStack.orientation = .vertical
         textStack.alignment = .leading
         textStack.distribution = .fill
-        textStack.spacing = 3
+        textStack.spacing = Layout.textSpacing
         textStack.setContentHuggingPriority(.defaultLow, for: .horizontal)
         textStack.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
 
@@ -219,10 +233,10 @@ public final class CrossPromoCardNSView: NSView, NSGestureRecognizerDelegate {
         adChipLabel.alignment = .center
         adChip.addSubview(adChipLabel)
         NSLayoutConstraint.activate([
-            adChipLabel.leadingAnchor.constraint(equalTo: adChip.leadingAnchor, constant: 5),
-            adChipLabel.trailingAnchor.constraint(equalTo: adChip.trailingAnchor, constant: -5),
-            adChipLabel.topAnchor.constraint(equalTo: adChip.topAnchor, constant: 2.5),
-            adChipLabel.bottomAnchor.constraint(equalTo: adChip.bottomAnchor, constant: -2.5),
+            adChipLabel.leadingAnchor.constraint(equalTo: adChip.leadingAnchor, constant: Layout.chipHorizontalInset),
+            adChipLabel.trailingAnchor.constraint(equalTo: adChip.trailingAnchor, constant: -Layout.chipHorizontalInset),
+            adChipLabel.topAnchor.constraint(equalTo: adChip.topAnchor, constant: Layout.chipVerticalInset),
+            adChipLabel.bottomAnchor.constraint(equalTo: adChip.bottomAnchor, constant: -Layout.chipVerticalInset),
         ])
 
         disclosureLabel.font = .systemFont(ofSize: 11, weight: .medium)
@@ -239,7 +253,7 @@ public final class CrossPromoCardNSView: NSView, NSGestureRecognizerDelegate {
         textStack.addArrangedSubview(appNameLabel)
         textStack.addArrangedSubview(taglineLabel)
         textStack.addArrangedSubview(disclosureRow)
-        textStack.setCustomSpacing(5, after: taglineLabel)
+        textStack.setCustomSpacing(Layout.disclosureSpacing, after: taglineLabel)
 
         ctaButton.target = self
         ctaButton.action = #selector(openCard)
@@ -260,7 +274,7 @@ public final class CrossPromoCardNSView: NSView, NSGestureRecognizerDelegate {
         addGestureRecognizer(clickRecognizer)
 
         NSLayoutConstraint.activate([
-            iconWrapper.widthAnchor.constraint(equalToConstant: 56),
+            iconWrapper.widthAnchor.constraint(equalToConstant: Layout.iconSize),
             iconWrapper.heightAnchor.constraint(equalTo: iconWrapper.widthAnchor),
             iconView.leadingAnchor.constraint(equalTo: iconWrapper.leadingAnchor),
             iconView.trailingAnchor.constraint(equalTo: iconWrapper.trailingAnchor),
@@ -269,11 +283,11 @@ public final class CrossPromoCardNSView: NSView, NSGestureRecognizerDelegate {
             ctaButton.heightAnchor.constraint(greaterThanOrEqualToConstant: 32),
         ])
         expandedLayoutConstraints = [
-            container.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 14),
-            container.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -14),
-            container.topAnchor.constraint(equalTo: topAnchor, constant: 14),
-            container.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -14),
-            heightAnchor.constraint(greaterThanOrEqualToConstant: 84),
+            container.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Layout.inset),
+            container.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -Layout.inset),
+            container.topAnchor.constraint(equalTo: topAnchor, constant: Layout.inset),
+            container.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -Layout.inset),
+            heightAnchor.constraint(greaterThanOrEqualToConstant: Layout.minimumHeight),
         ]
         collapsedHeightConstraint = heightAnchor.constraint(equalToConstant: 0)
         setCollapsed(true)
@@ -461,14 +475,92 @@ public final class CrossPromoCardNSView: NSView, NSGestureRecognizerDelegate {
         } else {
             let width = bounds.width
             guard width > 0 else { return }
-            let widthConstraint = widthAnchor.constraint(equalToConstant: width)
-            widthConstraint.isActive = true
-            height = fittingSize.height
-            widthConstraint.isActive = false
+            height = preferredSize(forWidth: width).height
         }
         guard abs(height - lastReportedPreferredHeight) > 0.5 else { return }
         lastReportedPreferredHeight = height
         onPreferredHeightChange(height)
+    }
+
+    /// Measure only the card's text and fixed chrome. SwiftUI can ask for several
+    /// widths during one layout pass; querying Auto Layout on the attached view
+    /// (or temporarily adding a width constraint) re-enters its hosting graph on
+    /// macOS 15 and can leave the main thread busy indefinitely.
+    func preferredSize(forWidth proposedWidth: CGFloat?) -> CGSize {
+        let buttonSize = ctaButton.intrinsicContentSize
+        let naturalTextWidth = max(
+            appNameLabel.cell?.cellSize.width ?? 0,
+            taglineLabel.cell?.cellSize.width ?? 0,
+            disclosureRowWidth
+        )
+        let width: CGFloat
+        if let proposedWidth, proposedWidth.isFinite {
+            width = max(0, proposedWidth)
+        } else if bounds.width.isFinite, bounds.width > 0 {
+            width = bounds.width
+        } else {
+            width = expandedChromeWidth(buttonWidth: buttonSize.width) + naturalTextWidth
+        }
+        guard !isHidden, width > 0 else { return CGSize(width: width, height: 0) }
+        let hidesCTA = usesCompactLayout(for: width, buttonWidth: buttonSize.width)
+        let chromeWidth = hidesCTA
+            ? Layout.inset * 2 + Layout.iconSize + Layout.columnSpacing
+            : expandedChromeWidth(buttonWidth: buttonSize.width)
+        let textWidth = max(Layout.minimumTextMeasurementWidth, width - chromeWidth)
+        let textHeight = measuredHeight(of: appNameLabel, width: textWidth)
+            + Layout.textSpacing
+            + measuredHeight(of: taglineLabel, width: textWidth)
+            + Layout.disclosureSpacing
+            + max(
+                (adChipLabel.cell?.cellSize.height ?? 0) + Layout.chipVerticalInset * 2,
+                disclosureLabel.cell?.cellSize.height ?? 0
+            )
+        let contentHeight = max(Layout.iconSize, buttonSize.height, textHeight)
+        return CGSize(width: width, height: ceil(max(Layout.minimumHeight, contentHeight + Layout.inset * 2)))
+    }
+
+    private var disclosureRowWidth: CGFloat {
+        (adChipLabel.cell?.cellSize.width ?? 0) + Layout.chipHorizontalInset * 2
+            + disclosureRow.spacing + (disclosureLabel.cell?.cellSize.width ?? 0)
+    }
+
+    private func measuredHeight(of label: NSTextField, width: CGFloat) -> CGFloat {
+        guard let cell = label.cell else { return 0 }
+        let measured = cell.cellSize(forBounds: NSRect(
+            x: 0, y: 0, width: width, height: .greatestFiniteMagnitude
+        )).height
+        guard label.maximumNumberOfLines > 0, let font = label.font else { return ceil(measured) }
+        let lineHeight = ceil(font.ascender - font.descender + font.leading)
+        return ceil(min(measured, lineHeight * CGFloat(label.maximumNumberOfLines)))
+    }
+
+    private func updateWrappingWidth(for width: CGFloat) {
+        guard width.isFinite, width > 0 else { return }
+        let buttonWidth = ctaButton.intrinsicContentSize.width
+        let hidesCTA = usesCompactLayout(for: width, buttonWidth: buttonWidth)
+        if ctaButton.isHidden != hidesCTA {
+            ctaButton.isHidden = hidesCTA
+        }
+        let chromeWidth = hidesCTA
+            ? Layout.inset * 2 + Layout.iconSize + Layout.columnSpacing
+            : expandedChromeWidth(buttonWidth: buttonWidth)
+        let textWidth = max(
+            Layout.minimumTextMeasurementWidth,
+            width - chromeWidth
+        )
+        for label in [appNameLabel, taglineLabel] {
+            if abs(label.preferredMaxLayoutWidth - textWidth) > 0.5 {
+                label.preferredMaxLayoutWidth = textWidth
+            }
+        }
+    }
+
+    private func expandedChromeWidth(buttonWidth: CGFloat) -> CGFloat {
+        Layout.inset * 2 + Layout.iconSize + Layout.columnSpacing * 2 + buttonWidth
+    }
+
+    private func usesCompactLayout(for width: CGFloat, buttonWidth: CGFloat) -> Bool {
+        width < expandedChromeWidth(buttonWidth: buttonWidth) + Layout.minimumExpandedTextWidth
     }
 
     private func loadIcon(from url: URL) {
@@ -494,12 +586,17 @@ public final class CrossPromoCardNSView: NSView, NSGestureRecognizerDelegate {
         _ gestureRecognizer: NSGestureRecognizer,
         shouldAttemptToRecognizeWith event: NSEvent
     ) -> Bool {
+        guard !ctaButton.isHidden else { return true }
         let location = convert(event.locationInWindow, from: nil)
         let buttonFrame = ctaButton.convert(ctaButton.bounds, to: self)
         return !buttonFrame.contains(location)
     }
 
     @objc private func handleCardClick(_ recognizer: NSClickGestureRecognizer) {
+        guard !ctaButton.isHidden else {
+            openCard()
+            return
+        }
         let buttonFrame = convert(ctaButton.bounds, from: ctaButton)
         guard !buttonFrame.contains(recognizer.location(in: self)) else { return }
         openCard()
@@ -652,11 +749,11 @@ public struct CrossPromoCard: NSViewRepresentable {
         nsView: CrossPromoCardNSView,
         context: Context
     ) -> CGSize? {
-        guard let width = proposal.width else { return nil }
+        let size = nsView.preferredSize(forWidth: proposal.width)
         guard measuredPlacement == placement, preferredHeight > 0 else {
-            return CGSize(width: width, height: 0)
+            return CGSize(width: size.width, height: 0)
         }
-        return fittingSize(for: proposal, nsView: nsView)
+        return size
     }
 
     private func connectHeightReporting(to view: CrossPromoCardNSView) {
@@ -708,12 +805,6 @@ private func fittingSize(
     for proposal: ProposedViewSize,
     nsView: CrossPromoCardNSView
 ) -> CGSize? {
-    guard let width = proposal.width else { return nil }
-    guard !nsView.isHidden else { return CGSize(width: width, height: 0) }
-    let widthConstraint = nsView.widthAnchor.constraint(equalToConstant: width)
-    widthConstraint.isActive = true
-    let size = nsView.fittingSize
-    widthConstraint.isActive = false
-    return CGSize(width: width, height: size.height)
+    nsView.preferredSize(forWidth: proposal.width)
 }
 #endif
