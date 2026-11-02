@@ -57,6 +57,8 @@ Auto Layout graph. SwiftUI size proposals must not add temporary constraints or
 ask the mounted view for a constraint-based fitting size. Both live and preview
 cards use the same measurement path; empty cards still report zero height.
 Wrapping-label widths follow the card's available text column during layout.
+At exceptionally narrow widths the whole card remains clickable and the separate
+CTA button collapses before it can overflow the card boundary.
 
 This avoids the fitting path identified in a macOS 15.7.7 startup hang report.
 Regression coverage includes repeated finite, unspecified and non-finite width

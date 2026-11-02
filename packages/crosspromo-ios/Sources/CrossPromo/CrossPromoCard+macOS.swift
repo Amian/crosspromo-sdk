@@ -30,6 +30,7 @@ public final class CrossPromoCardNSView: NSView, NSGestureRecognizerDelegate {
         static let chipVerticalInset: CGFloat = 2.5
         static let minimumHeight: CGFloat = 84
         static let minimumTextMeasurementWidth: CGFloat = 1
+        static let minimumExpandedTextWidth: CGFloat = 56
     }
 
     private let container = NSStackView()
@@ -487,8 +488,6 @@ public final class CrossPromoCardNSView: NSView, NSGestureRecognizerDelegate {
     /// macOS 15 and can leave the main thread busy indefinitely.
     func preferredSize(forWidth proposedWidth: CGFloat?) -> CGSize {
         let buttonSize = ctaButton.intrinsicContentSize
-        let chromeWidth = Layout.inset * 2 + Layout.iconSize
-            + Layout.columnSpacing * 2 + buttonSize.width
         let naturalTextWidth = max(
             appNameLabel.cell?.cellSize.width ?? 0,
             taglineLabel.cell?.cellSize.width ?? 0,
@@ -500,9 +499,13 @@ public final class CrossPromoCardNSView: NSView, NSGestureRecognizerDelegate {
         } else if bounds.width.isFinite, bounds.width > 0 {
             width = bounds.width
         } else {
-            width = chromeWidth + naturalTextWidth
+            width = expandedChromeWidth(buttonWidth: buttonSize.width) + naturalTextWidth
         }
         guard !isHidden, width > 0 else { return CGSize(width: width, height: 0) }
+        let hidesCTA = usesCompactLayout(for: width, buttonWidth: buttonSize.width)
+        let chromeWidth = hidesCTA
+            ? Layout.inset * 2 + Layout.iconSize + Layout.columnSpacing
+            : expandedChromeWidth(buttonWidth: buttonSize.width)
         let textWidth = max(Layout.minimumTextMeasurementWidth, width - chromeWidth)
         let textHeight = measuredHeight(of: appNameLabel, width: textWidth)
             + Layout.textSpacing
@@ -533,16 +536,31 @@ public final class CrossPromoCardNSView: NSView, NSGestureRecognizerDelegate {
 
     private func updateWrappingWidth(for width: CGFloat) {
         guard width.isFinite, width > 0 else { return }
+        let buttonWidth = ctaButton.intrinsicContentSize.width
+        let hidesCTA = usesCompactLayout(for: width, buttonWidth: buttonWidth)
+        if ctaButton.isHidden != hidesCTA {
+            ctaButton.isHidden = hidesCTA
+        }
+        let chromeWidth = hidesCTA
+            ? Layout.inset * 2 + Layout.iconSize + Layout.columnSpacing
+            : expandedChromeWidth(buttonWidth: buttonWidth)
         let textWidth = max(
             Layout.minimumTextMeasurementWidth,
-            width - Layout.inset * 2 - Layout.iconSize
-                - Layout.columnSpacing * 2 - ctaButton.intrinsicContentSize.width
+            width - chromeWidth
         )
         for label in [appNameLabel, taglineLabel] {
             if abs(label.preferredMaxLayoutWidth - textWidth) > 0.5 {
                 label.preferredMaxLayoutWidth = textWidth
             }
         }
+    }
+
+    private func expandedChromeWidth(buttonWidth: CGFloat) -> CGFloat {
+        Layout.inset * 2 + Layout.iconSize + Layout.columnSpacing * 2 + buttonWidth
+    }
+
+    private func usesCompactLayout(for width: CGFloat, buttonWidth: CGFloat) -> Bool {
+        width < expandedChromeWidth(buttonWidth: buttonWidth) + Layout.minimumExpandedTextWidth
     }
 
     private func loadIcon(from url: URL) {
@@ -568,12 +586,17 @@ public final class CrossPromoCardNSView: NSView, NSGestureRecognizerDelegate {
         _ gestureRecognizer: NSGestureRecognizer,
         shouldAttemptToRecognizeWith event: NSEvent
     ) -> Bool {
+        guard !ctaButton.isHidden else { return true }
         let location = convert(event.locationInWindow, from: nil)
         let buttonFrame = ctaButton.convert(ctaButton.bounds, to: self)
         return !buttonFrame.contains(location)
     }
 
     @objc private func handleCardClick(_ recognizer: NSClickGestureRecognizer) {
+        guard !ctaButton.isHidden else {
+            openCard()
+            return
+        }
         let buttonFrame = convert(ctaButton.bounds, from: ctaButton)
         guard !buttonFrame.contains(recognizer.location(in: self)) else { return }
         openCard()
