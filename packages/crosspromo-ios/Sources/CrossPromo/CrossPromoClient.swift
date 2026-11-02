@@ -305,7 +305,7 @@ public actor CrossPromoClient {
 
 @MainActor
 public enum CrossPromo {
-    public nonisolated static let sdkVersion = "0.4.1"
+    public nonisolated static let sdkVersion = "0.4.2"
     private static var configuredClient: CrossPromoClient?
 
     /// Everything an ad needs — the session handshake, one card, and its icon — is
