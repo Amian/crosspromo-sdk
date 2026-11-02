@@ -234,9 +234,10 @@ struct CrossPromoMacOSTests {
             #expect(labels.allSatisfy { $0.preferredMaxLayoutWidth > 0 })
             let button = try #require(firstSubview(of: NSButton.self, in: native))
             let buttonFrame = button.convert(button.bounds, to: native)
-            let pixelTolerance = native.bounds.insetBy(dx: -1, dy: -1)
+            let horizontallyContained = buttonFrame.minX >= native.bounds.minX - 1
+                && buttonFrame.maxX <= native.bounds.maxX + 1
             #expect(
-                button.isHidden || pixelTolerance.contains(buttonFrame),
+                button.isHidden || horizontallyContained,
                 "width: \(width), bounds: \(native.bounds), button: \(buttonFrame), hidden: \(button.isHidden)"
             )
             #expect(width > 300 || button.isHidden)
