@@ -31,6 +31,7 @@ public final class CrossPromoCardNSView: NSView, NSGestureRecognizerDelegate {
         static let minimumHeight: CGFloat = 84
         static let minimumTextMeasurementWidth: CGFloat = 1
         static let minimumExpandedTextWidth: CGFloat = 56
+        static let minimumExpandedCardWidth: CGFloat = 340
     }
 
     private let container = NSStackView()
@@ -561,7 +562,8 @@ public final class CrossPromoCardNSView: NSView, NSGestureRecognizerDelegate {
 
     private func usesCompactLayout(for width: CGFloat, buttonWidth: CGFloat) -> Bool {
         let requiredTextWidth = max(Layout.minimumExpandedTextWidth, disclosureRowWidth)
-        return width < expandedChromeWidth(buttonWidth: buttonWidth) + requiredTextWidth
+        let contentWidth = expandedChromeWidth(buttonWidth: buttonWidth) + requiredTextWidth
+        return width < max(Layout.minimumExpandedCardWidth, contentWidth)
     }
 
     private func loadIcon(from url: URL) {

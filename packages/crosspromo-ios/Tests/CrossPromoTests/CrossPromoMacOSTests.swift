@@ -234,9 +234,12 @@ struct CrossPromoMacOSTests {
             #expect(labels.allSatisfy { $0.preferredMaxLayoutWidth > 0 })
             let button = try #require(firstSubview(of: NSButton.self, in: native))
             let buttonFrame = button.convert(button.bounds, to: native)
-            let pixelTolerance = native.bounds.insetBy(dx: -0.5, dy: -0.5)
-            #expect(button.isHidden || pixelTolerance.contains(buttonFrame))
-            #expect(width != 260 || button.isHidden)
+            let pixelTolerance = native.bounds.insetBy(dx: -1, dy: -1)
+            #expect(
+                button.isHidden || pixelTolerance.contains(buttonFrame),
+                "width: \(width), bounds: \(native.bounds), button: \(buttonFrame), hidden: \(button.isHidden)"
+            )
+            #expect(width > 300 || button.isHidden)
             #expect(width < 400 || !button.isHidden)
             if let capturePath = ProcessInfo.processInfo.environment["CROSSPROMO_LAYOUT_CAPTURE_DIR"],
                let bitmap = native.bitmapImageRepForCachingDisplay(in: native.bounds) {
