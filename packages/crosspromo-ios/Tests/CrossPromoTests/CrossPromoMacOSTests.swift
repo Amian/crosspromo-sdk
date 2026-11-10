@@ -161,6 +161,13 @@ struct CrossPromoMacOSTests {
         nativeView.layoutSubtreeIfNeeded()
         await drainMainQueue()
         #expect(reportedHeights.count == reportCount)
+
+        nativeView.placement = .result
+        nativeView.displayPreview(card: card, icon: icon)
+        await drainMainQueue()
+        #expect(reportedHeights.count == reportCount + 1)
+        #expect(reportedHeights.last == narrowHeight, "a new placement reports even at the same height")
+
         heightContinuation.finish()
     }
 

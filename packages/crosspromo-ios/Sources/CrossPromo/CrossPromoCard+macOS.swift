@@ -91,6 +91,8 @@ public final class CrossPromoCardNSView: NSView, NSGestureRecognizerDelegate {
         loadTask?.cancel()
         imageTask?.cancel()
         allowsOpening = true
+        // A replacement at a new placement can have the same height.
+        lastReportedPreferredHeight = -1
         setCollapsed(true)
         card = nil
         accent = nil
