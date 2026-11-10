@@ -709,8 +709,12 @@ public struct CrossPromoCard: NSViewRepresentable {
     public var onError: ((Error) -> Void)?
     public var onCardLoaded: ((PromoCardData?) -> Void)?
 
-    @State private var preferredHeight: CGFloat = 0
-    @State private var measuredPlacement: CrossPromoPlacement?
+    @State private var measurement: CrossPromoCardMeasurement?
+    var sharedMeasurement: Binding<CrossPromoCardMeasurement?>?
+
+    private var cardMeasurement: Binding<CrossPromoCardMeasurement?> {
+        sharedMeasurement ?? $measurement
+    }
 
     public init(placement: CrossPromoPlacement, onError: ((Error) -> Void)? = nil) {
         self.placement = placement
@@ -753,22 +757,26 @@ public struct CrossPromoCard: NSViewRepresentable {
         context: Context
     ) -> CGSize? {
         let size = nsView.preferredSize(forWidth: proposal.width)
-        guard measuredPlacement == placement, preferredHeight > 0 else {
+        guard cardMeasurement.wrappedValue?.showsCard(for: placement) == true else {
             return CGSize(width: size.width, height: 0)
         }
         return size
     }
 
     private func connectHeightReporting(to view: CrossPromoCardNSView) {
-        let preferredHeight = $preferredHeight
-        let measuredPlacement = $measuredPlacement
+        let measurement = cardMeasurement
         let placement = placement
         view.onPreferredHeightChange = { height in
             let normalizedHeight = max(0, height)
-            guard measuredPlacement.wrappedValue != placement
-                    || abs(normalizedHeight - preferredHeight.wrappedValue) > 0.5 else { return }
-            measuredPlacement.wrappedValue = placement
-            preferredHeight.wrappedValue = normalizedHeight
+            if let current = measurement.wrappedValue,
+               current.placement == placement,
+               abs(normalizedHeight - current.height) <= 0.5 {
+                return
+            }
+            measurement.wrappedValue = CrossPromoCardMeasurement(
+                placement: placement,
+                height: normalizedHeight
+            )
         }
     }
 }

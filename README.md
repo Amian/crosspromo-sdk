@@ -94,6 +94,9 @@ Imperative UIKit apps can use `CrossPromoCardUIView(placement: .postScan)`. Impe
 AppKit apps can use `CrossPromoCardNSView(placement: .postScan)`. Sandboxed Mac apps must
 enable the **Outgoing Connections (Client)** capability in their app target.
 
+SwiftUI apps can optionally [offer an ad-free option below each displayed card](packages/crosspromo-ios/README.md#offer-an-ad-free-option-at-an-ad-placement).
+Each placement can use the built-in localized “Remove Ads” label or supply its own.
+
 [Detailed native Apple instructions](packages/crosspromo-ios/README.md)
 
 ### Flutter on iOS

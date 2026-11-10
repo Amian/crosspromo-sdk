@@ -251,6 +251,49 @@ struct CrossPromoMacOSTests {
         }
     }
 
+    @Test("Remove Ads adds height only while an offer and a displayed card are available")
+    @MainActor
+    func removeAdsFollowsCardDisplayAndOffer() async throws {
+        let offer = CrossPromoRemoveAds(label: Text(verbatim: "Use the app ad-free")) {}
+        var errors = 0
+        func content(offer: CrossPromoRemoveAds?) -> some View {
+            CrossPromoCard(placement: .settings, onError: { _ in errors += 1 })
+                .removeAds(offer)
+                .frame(width: 400)
+        }
+
+        let host = NSHostingView(rootView: content(offer: offer))
+        host.frame = NSRect(x: 0, y: 0, width: 400, height: 300)
+        host.layoutSubtreeIfNeeded()
+        let native = try #require(firstSubview(of: CrossPromoCardNSView.self, in: host))
+        #expect(host.fittingSize.height == 0, "loading leaves no footer space")
+
+        await drainMainQueue()
+        #expect(errors == 1, "the existing error callback receives the unconfigured client error")
+        #expect(host.fittingSize.height == 0, "an error leaves no footer space")
+
+        native.displayPreview(card: sizingCard(), icon: solidImage(color: .systemBlue))
+        await drainMainQueue()
+        host.layoutSubtreeIfNeeded()
+        let cardHeight = native.preferredSize(forWidth: 400).height
+        #expect(cardHeight > 0)
+        #expect(host.fittingSize.height > cardHeight)
+
+        host.rootView = content(offer: nil)
+        host.layoutSubtreeIfNeeded()
+        #expect(firstSubview(of: CrossPromoCardNSView.self, in: host) === native)
+        #expect(abs(host.fittingSize.height - cardHeight) < 1)
+
+        host.rootView = content(offer: offer)
+        host.layoutSubtreeIfNeeded()
+        #expect(host.fittingSize.height > cardHeight)
+
+        native.reload()
+        await drainMainQueue()
+        host.layoutSubtreeIfNeeded()
+        #expect(host.fittingSize.height == 0)
+    }
+
     private func sizingCard() -> PromoCardData {
         PromoCardData(
             cardID: "sequoia-sizing", appName: "Sample App with a Longer Name",

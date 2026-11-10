@@ -50,6 +50,43 @@ native renderer and propagates load-time and width-driven height changes back in
 SwiftUI, including inside lists and forms. Do not wrap it in `UIViewRepresentable`,
 `NSViewRepresentable`, or host-side iOS/macOS renderer branches.
 
+### Offer an ad-free option at an ad placement
+
+Use `.removeAds(...)` on each SwiftUI card where you want to offer an ad-free
+option. The footer sits directly below the displayed ad and occupies no space
+while the placement is loading, returns no ad, or fails. Pass `nil` for
+placements where your app has no offer.
+
+```swift
+if shouldShowAds {
+    CrossPromoCard(placement: .settings)
+        .removeAds(adFreeOfferAvailable ? CrossPromoRemoveAds {
+            presentAdFreePaywall(from: .settings)
+        } : nil)
+}
+```
+
+The SDK provides a localized “Remove Ads” label and “Opens ad-free options”
+accessibility hint in 29 locales. It uses your app's language when supported
+and falls back to English. To supply your own copy, pass app-localized SwiftUI
+`Text` for the label, the hint, or both.
+
+```swift
+CrossPromoCard(placement: .result)
+    .removeAds(CrossPromoRemoveAds(
+        label: Text("Use the app ad-free"),
+        accessibilityHint: Text("Opens Plus options")
+    ) {
+        presentAdFreePaywall(from: .result)
+    })
+```
+
+Apply any `.onCardLoaded` callback before `.removeAds`. The footer button calls
+your action on the main actor, separately from ad taps and impressions. Your
+app owns the destination, purchase and restore flow, and any offer analytics.
+When the user has ad-free access, omit the entire card. Use the same modifier
+on `CrossPromoCardPreview` to try the footer with local preview data.
+
 ### macOS card measurement
 
 The AppKit card measures its text and fixed chrome independently of its attached
