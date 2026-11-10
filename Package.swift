@@ -4,6 +4,7 @@ import PackageDescription
 
 let package = Package(
     name: "CrossPromoSDK",
+    defaultLocalization: "en",
     platforms: [
         .iOS(.v16),
         .macOS(.v13),
@@ -15,7 +16,7 @@ let package = Package(
         .target(
             name: "CrossPromo",
             path: "packages/crosspromo-ios/Sources/CrossPromo",
-            resources: [.copy("PrivacyInfo.xcprivacy")]
+            resources: [.copy("PrivacyInfo.xcprivacy"), .process("Resources")]
         ),
         .testTarget(
             name: "CrossPromoTests",

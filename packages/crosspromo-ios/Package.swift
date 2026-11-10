@@ -4,6 +4,7 @@ import PackageDescription
 
 let package = Package(
     name: "CrossPromo",
+    defaultLocalization: "en",
     platforms: [
         .iOS(.v16),
         .macOS(.v13),
@@ -14,7 +15,7 @@ let package = Package(
     targets: [
         .target(
             name: "CrossPromo",
-            resources: [.copy("PrivacyInfo.xcprivacy")]
+            resources: [.copy("PrivacyInfo.xcprivacy"), .process("Resources")]
         ),
         .testTarget(name: "CrossPromoTests", dependencies: ["CrossPromo"]),
     ]
